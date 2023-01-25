@@ -4,13 +4,14 @@ import torch.nn
 import torchvision.transforms
 from torchvision.models import get_model
 from augmentations import *
+from torchvision.transforms import RandomApply, RandomResizedCrop, RandomHorizontalFlip, GaussianBlur, \
+    RandomSolarize, ToTensor
 
 ACTIVATION_OPTIONS = {
     "relu":torch.nn.ReLU,
     "leaky_relu":torch.nn.LeakyReLU,
     "none":torch.nn.Identity
     }
-
 
 
 class BYOL(torch.nn.Module):
@@ -43,25 +44,33 @@ class BYOL(torch.nn.Module):
         self.target_projection_head = copy.deepcopy(self.online_projection_head)
 
         self.online_network = torch.nn.Sequential(self.online_encoder,
-                                                   self.online_projection_head,
-                                                   self.online_predictor)
+                                                  self.online_projection_head,
+                                                  self.online_predictor)
         self.target_network = torch.nn.Sequential(self.target_encoder,
-                                                   self.target_projection_head)
-
-        self.view_1_augmentations = torchvision.transforms.Compose([BYOLResizedCrop(image_aug_prob = 0.8),
-                                                                    BYOLHorizontalFlip(image_aug_prob = 0.5),
-                                                                    BYOLColorJitter(image_aug_prob = 0.8),
-                                                                    BYOLGaussianBlur(image_aug_prob = 1.0),
-                                                                    BYOLSolarisation(image_aug_prob = 0.0)])
-
-        self.view_2_augmentations = torchvision.transforms.Compose([BYOLResizedCrop(image_aug_prob = 0.8),
-                                                                    BYOLHorizontalFlip(image_aug_prob = 0.5),
-                                                                    BYOLColorJitter(image_aug_prob = 0.8),
-                                                                    BYOLGaussianBlur(image_aug_prob = 0.1),
-                                                                    BYOLSolarisation(image_aug_prob = 0.2)])
+                                                  self.target_projection_head)
 
 
+        self.view_1_augmentations = torchvision.transforms.Compose([RandomApply([RandomResizedCrop(size = (32, 32))],
+                                                                                p = 1.0),
+                                                                    RandomHorizontalFlip(p = 0.5),
+                                                                    RandomApply([BYOLColorJitter()],
+                                                                                p = 0.8),
+                                                                    RandomApply([GaussianBlur(kernel_size = (23,23))],
+                                                                                p = 1.0),
+                                                                    RandomApply([RandomSolarize(threshold = 0.5)],
+                                                                                p = 0.0),
+                                                                    ToTensor()])
 
+        self.view_2_augmentations = torchvision.transforms.Compose([RandomApply([RandomResizedCrop(size = (32, 32))],
+                                                                                p = 1.0),
+                                                                    RandomHorizontalFlip(p = 0.5),
+                                                                    RandomApply([BYOLColorJitter()],
+                                                                                p = 0.8),
+                                                                    RandomApply([GaussianBlur(kernel_size = (23, 23))],
+                                                                                p = 0.1),
+                                                                    RandomApply([RandomSolarize(threshold = 0.5)],
+                                                                                p = 0.2),
+                                                                    ToTensor()])
 
     @staticmethod
     def regression_loss(predicted: torch.Tensor,
@@ -69,26 +78,25 @@ class BYOL(torch.nn.Module):
         return 2 - (2 * torch.nn.functional.cosine_similarity(x1 = predicted,
                                                               x2 = expected))
 
-    def get_image_views(self, image):
-        image_view_1 = self.view_1_augmentations(image.clone())
-        image_view_2 = self.view_2_augmentations(image.clone())
-        return image_view_1, image_view_2
+    def get_image_views(self,
+                        image):
+        return self.view_1_augmentations(image), self.view_2_augmentations(image)
 
-
-
-    def forward(self, image_1, image_2, inference  = False):
+    def forward(self,
+                image_1,
+                image_2,
+                inference=False):
         online_output_1 = self.online_network(image_1)
         online_output_2 = self.online_network(image_2)
         with torch.no_grad():
             target_output_1 = self.target_network(image_1).detach()
             target_output_2 = self.target_network(image_2).detach()
 
-        total_loss = self.regression_loss(online_output_1, target_output_1) + self.regression_loss(online_output_2,
-                                                                                                   target_output_2)
+        total_loss = self.regression_loss(online_output_1,
+                                          target_output_1) + self.regression_loss(online_output_2,
+                                                                                  target_output_2)
 
         return total_loss
-
-
 
 
 class LinearLayer(torch.nn.Module):
