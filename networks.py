@@ -59,12 +59,17 @@ class BYOL(torch.nn.Module):
         self.target_network = torch.nn.Sequential(self.target_encoder,
                                                   self.target_projection_head)
 
+        for param in self.target_network.parameters():
+            param.requires_grad = False
+
         self.view_1_augs, self.view_2_augs = self.get_augmentations_compositions()
 
     @torch.no_grad()
     def update_target_network(self):
+        online_network_state_dict = self.online_network.state_dict()
+        target_network_state_dict = self.target_network.state_dict()
         for name, param in self.target_network.named_parameters():
-            self.target_network.state_dict()[name] += ((1-self.current_tau) * (self.online_network.state_dict()[name] - param))
+            target_network_state_dict[name] += ((1-self.current_tau) * (online_network_state_dict[name] - param))
 
 
     def get_augmentations_compositions(self):
