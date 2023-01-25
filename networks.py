@@ -17,14 +17,21 @@ ACTIVATION_OPTIONS = {
 class BYOL(torch.nn.Module):
 
     def __init__(self,
+                 augmentation_params: dict,
                  encoder_model: str = "resnet50",
                  embedding_size: int = 128,
                  num_projection_layers: int = 1,
                  projection_size: int = 128,
-                 num_predictor_layers: int = 1):
+                 num_predictor_layers: int = 1,
+                 input_height: int = 224,
+                 input_width: int = 224,
+                 projection_hidden_layer_size : int = 128):
         super().__init__()
+        self.aug_params = augmentation_params
         self.embedding_size = embedding_size
         self.projection_size = projection_size
+        self.input_height = input_height
+        self.input_width = input_width
 
         self.online_encoder = get_model(name = encoder_model,
                                         weights = None,
@@ -49,30 +56,33 @@ class BYOL(torch.nn.Module):
         self.target_network = torch.nn.Sequential(self.target_encoder,
                                                   self.target_projection_head)
 
+        self.view_1_augs, self.view_2_augs = self.get_augmentations_compositions()
 
-        self.view_1_augmentations = torchvision.transforms.Compose([RandomApply([RandomResizedCrop(size = (32, 32))],
-                                                                                p = 1.0),
-                                                                    RandomHorizontalFlip(p = 0.5),
-                                                                    RandomApply([BYOLColorJitter()],
-                                                                                p = 0.8),
-                                                                    RandomApply([GaussianBlur(kernel_size = (23,23))],
-                                                                                p = 1.0),
-                                                                    RandomApply([RandomSolarize(threshold = 0.5)],
-                                                                                p = 0.0),
-                                                                    ToTensor()])
+    def get_augmentations_compositions(self):
+        augmentations = []
+        for view in self.aug_params.values():
+            c_j_params = view["colour_jitter"]
+            gauss_blur_params = view["gaussian_blur"]
+            solarization_params = view["solarization"]
+            view_augmentations = torchvision.transforms.Compose([RandomApply([RandomResizedCrop(size = (self.input_height,self.input_width))],
+                                                        p = view["random_crop"]),
+                                            RandomHorizontalFlip(p = view["random_flip"]),
+                                            RandomApply([BYOLColorJitter(max_brightness = c_j_params["brightness_adjustment"],
+                                                                         max_contrast = c_j_params["contrast_adjustment"],
+                                                                         max_saturation = c_j_params["saturation_adjustment"],
+                                                                         max_hue = c_j_params["hue_adjustment"])],
+                                                        p = c_j_params["probability"]),
+                                            RandomApply([GaussianBlur(kernel_size = gauss_blur_params["kernel_size"],
+                                                                      sigma = gauss_blur_params["std"])],
+                                                                      p = gauss_blur_params["probability"]),
+                                            RandomApply([RandomSolarize(threshold = solarization_params["threshold"],
+                                                                        p = solarization_params["probability"])]),
+                                                                 ToTensor()])
+            augmentations.append(view_augmentations)
+        return augmentations
 
-        self.view_2_augmentations = torchvision.transforms.Compose([RandomApply([RandomResizedCrop(size = (32, 32))],
-                                                                                p = 1.0),
-                                                                    RandomHorizontalFlip(p = 0.5),
-                                                                    RandomApply([BYOLColorJitter()],
-                                                                                p = 0.8),
-                                                                    RandomApply([GaussianBlur(kernel_size = (23, 23))],
-                                                                                p = 0.1),
-                                                                    RandomApply([RandomSolarize(threshold = 0.5)],
-                                                                                p = 0.2),
-                                                                    ToTensor()])
 
-    @staticmethod
+    @ staticmethod
     def regression_loss(predicted: torch.Tensor,
                         expected: torch.Tensor):
         return 2 - (2 * torch.nn.functional.cosine_similarity(x1 = predicted,
@@ -80,7 +90,7 @@ class BYOL(torch.nn.Module):
 
     def get_image_views(self,
                         image):
-        return self.view_1_augmentations(image), self.view_2_augmentations(image)
+        return self.view_1_augs(image), self.view_2_augs(image)
 
     def forward(self,
                 image_1,

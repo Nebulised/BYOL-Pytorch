@@ -1,0 +1,57 @@
+gpu: 0
+
+model:
+  input_height : 32
+  input_width : 32
+  encoder_model: "resnet50"
+  embedding_size: 128
+  num_projection_layers: 1
+  projection_size: 128
+  projection_hidden_layer_size: 128
+  num_predictor_layers: 1
+
+
+training:
+  learning_rate: 0.001
+  batch_size: 256
+  num_epochs: 250
+  num_workers: 4
+
+  augmentation:
+    view_1:
+      random_crop: 1.0
+      random_flip: 0.5
+      colour_jitter:
+        probability: 0.8
+        brightness_adjustment : 0.4
+        contrast_adjustment : 0.4
+        saturation_adjustment: 0.2
+        hue_adjustment: 0.1
+      colour_dropping: 0.2
+      gaussian_blur:
+        probability: 1.0
+        kernel_size: [23,23]
+        std: [0.1, 2.0]
+      solarization:
+        threshold: 0.5
+        probability: 0.0
+    view_2:
+      random_crop: 1.0
+      random_flip: 0.5
+      colour_jitter:
+        probability: 0.8
+        brightness_adjustment: 0.4
+        contrast_adjustment: 0.4
+        saturation_adjustment: 0.2
+        hue_adjustment: 0.1
+      colour_dropping: 0.2
+      gaussian_blur:
+        probability: 0.1
+        kernel_size: [ 23,23 ]
+        std: [ 0.1, 2.0 ]
+      solarization:
+        threshold: 0.5
+        probability: 0.2
+
+
+

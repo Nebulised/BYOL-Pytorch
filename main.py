@@ -3,7 +3,7 @@ import time
 
 import torch
 import torchvision
-
+import yaml
 from networks import BYOL
 
 
@@ -18,22 +18,10 @@ DATASET_CHOICES = ["custom",
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--learning-rate",
-                        type = float,
-                        help = "Model learning rate",
-                        required = True)
-    parser.add_argument("--iterations",
-                        type = int,
-                        help = "Iteration",
-                        required = True)
-    parser.add_argument("--batch-size",
-                        type = int,
-                        help = "Batch size",
-                        required = True)
     parser.add_argument("--model-output-path",
                         type = str,
                         help = "Path to save model")
-    parser.add_argument("--dataset",
+    parser.add_argument("--dataset-type",
                         type = str,
                         help = "Which dataset to train from. Can be a custom or emnist",
                         choices=DATASET_CHOICES,
@@ -70,34 +58,42 @@ def get_dataset(type, path, transform = None):
 
     return train_dataset, test_dataset
 
-
+def get_params():
+    with open("params.yaml", "r") as yaml_file:
+        try:
+            return yaml.safe_load(yaml_file)
+        except yaml.YAMLError as yaml_error:
+            print(yaml_error)
 
 def main():
     args = get_args()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    params = get_params()
+    device = torch.device(f"cuda:{params['gpu']}" if torch.cuda.is_available() else "cpu")
     print(f"Running on device : {device}")
-    model = BYOL().to(device)
+
+    model_params = params["model"]
+    training_params = params["training"]
+    aug_params = training_params["augmentation"]
+
+    ### Model setup
+    model = BYOL(augmentation_params = aug_params,
+                 **model_params).to(device)
 
     ############ Dataset setup ###########
-    train_dataset, test_dataset = get_dataset(type = args.dataset,
+    train_dataset, test_dataset = get_dataset(type = args.dataset_type,
                                               path = args.dataset_path,
                                               transform = model.get_image_views)
     dataloader = torch.utils.data.DataLoader(train_dataset,
-                                             batch_size=args.batch_size,
+                                             batch_size=training_params["batch_size"],
                                              shuffle=False,
-                                             num_workers=4)
+                                             num_workers=training_params["num_workers"])
     optimiser = torch.optim.SGD(model.parameters(),lr = 0.001)
-    for iteration_index in range(args.iterations):
+    for iteration_index in range(training_params["num_epochs"]):
         for i, ((view_1, view_2), _) in enumerate(dataloader):
-            start_loss = time.time()
             loss = model.forward(view_1.repeat(1,3,1,1).to(device), view_2.repeat(1,3,1,1).to(device),inference =
             False).mean()
-            print(f"Time to calc loss {time.time() - start_loss}")
-
-            start_backprop = time.time()
             loss.backward()
             optimiser.step()
-            print(f" Back prop time {time.time() - start_backprop}")
             print(f"Epoch {iteration_index} {i} / {len(dataloader)} | Loss : {loss}")
 
 
