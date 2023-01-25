@@ -47,9 +47,8 @@ def get_args():
 
     return parser.parse_args()
 
-def get_dataset(type, path, image_size=(224, 224)):
-    transforms = [torchvision.transforms.Resize(size=image_size),
-                  torchvision.transforms.ToTensor()]
+def get_dataset(type, path, transform = None):
+
 
     if "emnist" in type:
         _, split = type.split("_")
@@ -57,12 +56,12 @@ def get_dataset(type, path, image_size=(224, 224)):
                                                      split=split,
                                                      train=True,
                                                      download=False,
-                                                     transform=torchvision.transforms.Compose(transforms))
+                                                     transform=transform)
         test_dataset = torchvision.datasets.EMNIST(root=path,
                                                    split=split,
                                                    train=False,
                                                    download=False,
-                                                   transform=torchvision.transforms.Compose(transforms)), torchvision
+                                                   transform=transform), torchvision
 
     elif type == "custom":
         raise NotImplementedError("Custom datasets are not yet supported")
@@ -82,21 +81,17 @@ def main():
     ############ Dataset setup ###########
     train_dataset, test_dataset = get_dataset(type = args.dataset,
                                               path = args.dataset_path,
-                                              image_size = (32, 32))
+                                              transform = model.get_image_views)
     dataloader = torch.utils.data.DataLoader(train_dataset,
                                              batch_size=args.batch_size,
-                                             shuffle=True)
+                                             shuffle=False,
+                                             num_workers=4)
     optimiser = torch.optim.SGD(model.parameters(),lr = 0.001)
     for iteration_index in range(args.iterations):
-        for i, (original_image, _) in enumerate(dataloader):
-            start_time_to_image_to_device = time.time()
-            original_image = original_image.repeat(1,3,1,1)
-            print(f"Copy to device : {time.time() - start_time_to_image_to_device}")
-            start_augment = time.time()
-            image_view_1, image_view_2 = model.get_image_views(original_image)
-            print(f"Augment to get views : {time.time() - start_augment}")
+        for i, ((view_1, view_2), _) in enumerate(dataloader):
             start_loss = time.time()
-            loss = model.forward(image_view_1.to(device), image_view_2.to(device),inference = False).mean()
+            loss = model.forward(view_1.repeat(1,3,1,1).to(device), view_2.repeat(1,3,1,1).to(device),inference =
+            False).mean()
             print(f"Time to calc loss {time.time() - start_loss}")
 
             start_backprop = time.time()
