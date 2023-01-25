@@ -1,4 +1,5 @@
 import copy
+import os
 
 import torch.nn
 import torchvision.transforms
@@ -26,9 +27,11 @@ class BYOL(torch.nn.Module):
                  input_height: int = 224,
                  input_width: int = 224,
                  projection_hidden_layer_size : int = 128,
-                 ema_tau : int = 0.996):
+                 ema_tau : int = 0.996,
+                 name : str = "byol_model"):
         super().__init__()
         self.aug_params = augmentation_params
+        self.name = name
         #TODO: Implement tau updating
         self.current_tau = ema_tau
         self.embedding_size = embedding_size
@@ -71,6 +74,13 @@ class BYOL(torch.nn.Module):
         for name, param in self.target_network.named_parameters():
             target_network_state_dict[name] += ((1-self.current_tau) * (online_network_state_dict[name] - param))
 
+
+    def save(self, folder_path, epoch, optimiser):
+        torch.save({'epoch':epoch,
+                    'online_network_state_dict':self.online_network.state_dict(),
+                    "target_network_state_dict": self.target_network.state_dict(),
+                    'optimizer_state_dict':optimiser.state_dict(),
+            }, os.path.join(folder_path, f"{self.name}_epoch={epoch}.pt"))
 
     def get_augmentations_compositions(self):
         augmentations = []

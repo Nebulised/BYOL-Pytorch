@@ -18,9 +18,9 @@ DATASET_CHOICES = ["custom",
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-output-path",
+    parser.add_argument("--model-output-folder-path",
                         type = str,
-                        help = "Path to save model")
+                        help = "Path to folder to save checkpoints to")
     parser.add_argument("--dataset-type",
                         type = str,
                         help = "Which dataset to train from. Can be a custom or emnist",
@@ -88,14 +88,16 @@ def main():
                                              shuffle=False,
                                              num_workers=training_params["num_workers"])
     optimiser = torch.optim.Adam(model.online_network.parameters(),lr =training_params["learning_rate"])
-    for iteration_index in range(training_params["num_epochs"]):
-        for i, ((view_1, view_2), _) in enumerate(dataloader):
+    for epoch_index in range(training_params["num_epochs"]):
+        for minibatch_index, ((view_1, view_2), _) in enumerate(dataloader):
             loss = model.forward(view_1.repeat(1,3,1,1).to(device), view_2.repeat(1,3,1,1).to(device),inference =
             False).mean()
             loss.backward()
             optimiser.step()
             model.update_target_network()
-            print(f"Epoch {iteration_index} {i} / {len(dataloader)} | Loss : {loss}")
+            if minibatch_index % training_params["print_every"]  == 0 : print(f"Epoch {epoch_index} {minibatch_index} / {len(dataloader)} | Loss : {loss}")
+        if epoch_index % training_params["checkpoint_every"] == 0:
+            model.save(folder_path = args.model_output_folder_path, epoch = epoch_index, optimiser = optimiser)
 
 
 

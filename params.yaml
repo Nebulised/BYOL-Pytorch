@@ -12,11 +12,12 @@ model:
 
 
 training:
-  learning_rate: 0.001
-  batch_size: 256
+  learning_rate: 0.4
+  batch_size: 512
   num_epochs: 250
   num_workers: 4
   print_every: 100
+  checkpoint_every: 1
   ema_tau: 0.996
 
   augmentation:
@@ -55,5 +56,8 @@ training:
         threshold: 0.5
         probability: 0.2
 
+fine_tuning:
+  augmentation:
+    random_crop: 0.5
 
 
