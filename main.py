@@ -87,13 +87,14 @@ def main():
                                              batch_size=training_params["batch_size"],
                                              shuffle=False,
                                              num_workers=training_params["num_workers"])
-    optimiser = torch.optim.SGD(model.parameters(),lr = 0.001)
+    optimiser = torch.optim.Adam(model.online_network.parameters(),lr =training_params["learning_rate"])
     for iteration_index in range(training_params["num_epochs"]):
         for i, ((view_1, view_2), _) in enumerate(dataloader):
             loss = model.forward(view_1.repeat(1,3,1,1).to(device), view_2.repeat(1,3,1,1).to(device),inference =
             False).mean()
             loss.backward()
             optimiser.step()
+            model.update_target_network()
             print(f"Epoch {iteration_index} {i} / {len(dataloader)} | Loss : {loss}")
 
 

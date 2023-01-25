@@ -25,9 +25,12 @@ class BYOL(torch.nn.Module):
                  num_predictor_layers: int = 1,
                  input_height: int = 224,
                  input_width: int = 224,
-                 projection_hidden_layer_size : int = 128):
+                 projection_hidden_layer_size : int = 128,
+                 ema_tau : int = 0.996):
         super().__init__()
         self.aug_params = augmentation_params
+        #TODO: Implement tau updating
+        self.current_tau = ema_tau
         self.embedding_size = embedding_size
         self.projection_size = projection_size
         self.input_height = input_height
@@ -57,6 +60,12 @@ class BYOL(torch.nn.Module):
                                                   self.target_projection_head)
 
         self.view_1_augs, self.view_2_augs = self.get_augmentations_compositions()
+
+    @torch.no_grad()
+    def update_target_network(self):
+        for name, param in self.target_network.named_parameters():
+            self.target_network.state_dict()[name] += ((1-self.current_tau) * (self.online_network.state_dict()[name] - param))
+
 
     def get_augmentations_compositions(self):
         augmentations = []

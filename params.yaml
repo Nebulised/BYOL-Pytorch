@@ -16,6 +16,8 @@ training:
   batch_size: 256
   num_epochs: 250
   num_workers: 4
+  print_every: 100
+  ema_tau: 0.996
 
   augmentation:
     view_1:
