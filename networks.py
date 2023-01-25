@@ -43,14 +43,16 @@ class BYOL(torch.nn.Module):
                                         weights = None,
                                         num_classes = self.embedding_size)
 
-        self.online_projection_head = MLP(num_layers = num_projection_layers,
+        self.online_projection_head = MLP(num_hidden_layers = num_projection_layers,
                                           size_in = self.embedding_size,
+                                          hidden_layer_size = projection_hidden_layer_size,
                                           size_out = self.projection_size,
                                           batch_norm_enabled = True)
 
-        self.online_predictor = MLP(num_layers = num_predictor_layers,
+        self.online_predictor = MLP(num_hidden_layers = num_projection_layers,
                                     size_in = self.projection_size,
                                     size_out = self.projection_size,
+                                    hidden_layer_size = projection_hidden_layer_size,
                                     batch_norm_enabled = True)
 
         self.target_encoder = copy.deepcopy(self.online_encoder)
@@ -147,7 +149,7 @@ class LinearLayer(torch.nn.Module):
             raise ValueError(f"Expected activation function to be one of {list(ACTIVATION_OPTIONS.keys())}. Received"
                              f" {activation}")
         self.activation = ACTIVATION_OPTIONS[activation]()
-        self.batch_norm = torch.nn.BatchNorm2d(num_features = size_out) if batch_norm_enabled else torch.nn.Identity()
+        self.batch_norm = torch.nn.BatchNorm1d(num_features = size_out) if batch_norm_enabled else torch.nn.Identity()
         self.linear = torch.nn.Linear(in_features = size_in,
                                       out_features = size_out,
                                       bias = bias)
@@ -163,17 +165,18 @@ class LinearLayer(torch.nn.Module):
 class MLP(torch.nn.Module):
 
     def __init__(self,
-                 num_layers: int,
+                 num_hidden_layers: int,
                  size_in: int,
                  size_out: int,
+                 hidden_layer_size : int,
                  batch_norm_enabled: bool):
         super(MLP,
               self).__init__()
-        layers = [LinearLayer(size_in = size_in if layer_index == 0 else size_out,
-                              size_out = size_out,
+        layers = [LinearLayer(size_in = size_in if layer_index == 0 else hidden_layer_size,
+                              size_out = hidden_layer_size,
                               activation = "relu",
-                              batch_norm_enabled = batch_norm_enabled) for layer_index in range(num_layers - 1)]
-        layers.append(LinearLayer(size_in = size_out,
+                              batch_norm_enabled = batch_norm_enabled) for layer_index in range(num_hidden_layers)]
+        layers.append(LinearLayer(size_in = hidden_layer_size,
                                   size_out = size_out,
                                   activation = "none",
                                   batch_norm_enabled = False))

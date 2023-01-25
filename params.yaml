@@ -4,19 +4,19 @@ model:
   input_height : 32
   input_width : 32
   encoder_model: "resnet50"
-  embedding_size: 128
+  embedding_size: 1024
   num_projection_layers: 1
   projection_size: 128
-  projection_hidden_layer_size: 128
-  num_predictor_layers: 1
+  projection_hidden_layer_size: 2048
+
 
 
 training:
-  learning_rate: 0.4
+  learning_rate: 0.01
   batch_size: 512
-  num_epochs: 250
+  num_epochs: 10
   num_workers: 4
-  print_every: 100
+  print_every: 1
   checkpoint_every: 1
   ema_tau: 0.996
 
