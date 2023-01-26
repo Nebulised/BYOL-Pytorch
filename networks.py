@@ -6,7 +6,7 @@ import torchvision.transforms
 from torchvision.models import get_model
 from augmentations import *
 from torchvision.transforms import RandomApply, RandomResizedCrop, RandomHorizontalFlip, GaussianBlur, \
-    RandomSolarize, ToTensor
+    RandomSolarize, ToTensor, Normalize
 
 ACTIVATION_OPTIONS = {
     "relu":torch.nn.ReLU,
@@ -69,13 +69,13 @@ class BYOL(torch.nn.Module):
 
         self.view_1_augs, self.view_2_augs = self.get_augmentations_compositions()
 
-    @torch.no_grad()
-    def update_target_network(self):
-        online_network_state_dict = self.online_network.state_dict()
-        target_network_state_dict = self.target_network.state_dict()
-        for name, param in self.target_network.named_parameters():
-            target_network_state_dict[name] += ((1-self.current_tau) * (online_network_state_dict[name] - param))
 
+    def update_target_network(self):
+        with torch.no_grad():
+            online_network_state_dict = self.online_network.state_dict()
+            target_network_state_dict = self.target_network.state_dict()
+            for name, param in self.target_network.named_parameters():
+                target_network_state_dict[name] = (self.current_tau * param) + ((1-self.current_tau)*online_network_state_dict[name])
 
     def save(self, folder_path, epoch, optimiser):
         torch.save({'epoch':epoch,
@@ -83,6 +83,13 @@ class BYOL(torch.nn.Module):
                     "target_network_state_dict": self.target_network.state_dict(),
                     'optimizer_state_dict':optimiser.state_dict(),
             }, os.path.join(folder_path, f"{self.name}_epoch={epoch}.pt"))
+
+    def load(self, model_path):
+        checkpoint = torch.load(model_path)
+        self.online_network.load_state_dict(checkpoint["online_network_state_dict"])
+        self.target_network.load_state_dict(checkpoint["target_network_state_dict"])
+        return checkpoint["optimizer_state_dict"]
+    #TODO: Change optimizer to optimiser
 
     def get_augmentations_compositions(self):
         augmentations = []
@@ -103,7 +110,8 @@ class BYOL(torch.nn.Module):
                                                                       p = gauss_blur_params["probability"]),
                                             RandomApply([RandomSolarize(threshold = solarization_params["threshold"],
                                                                         p = solarization_params["probability"])]),
-                                                                 ToTensor()])
+                                                                 ToTensor(),
+                                                                 Normalize(mean = 0.5,std=0.5)])
             augmentations.append(view_augmentations)
         return augmentations
 
@@ -128,11 +136,10 @@ class BYOL(torch.nn.Module):
             target_output_1 = self.target_network(image_1).detach()
             target_output_2 = self.target_network(image_2).detach()
 
-        total_loss = self.regression_loss(online_output_1,
-                                          target_output_1) + self.regression_loss(online_output_2,
-                                                                                  target_output_2)
 
-        return total_loss
+        total_loss = self.regression_loss(online_output_1,target_output_2.detach()) + self.regression_loss(online_output_2,target_output_1.detach())
+
+        return total_loss.mean()
 
 
 class LinearLayer(torch.nn.Module):
