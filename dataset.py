@@ -1,4 +1,6 @@
+import torch
 import torchvision
+import torchvision.datasets
 
 DATASET_CHOICES = ["custom",
                    "emnist_by-class",
@@ -10,8 +12,8 @@ DATASET_CHOICES = ["custom",
                    "cifar10"]
 
 
-def get_dataset(type, path, train_transform = None, test_transform = None):
-
+def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_val = 0.0,  train_transform = None, test_transform = None):
+    val_dataset = None
 
     if "emnist" in type:
         _, split = type.split("_")
@@ -24,9 +26,7 @@ def get_dataset(type, path, train_transform = None, test_transform = None):
                                                    split=split,
                                                    train=False,
                                                    download=False,
-                                                   transform=torchvision.transforms.Compose([torchvision.transforms.Resize(64),
-                                                                                             torchvision.transforms.ToTensor(),
-                                                                                             torchvision.transforms.Normalize(0.5, 0.25)]))
+                                                   transform=test_transform)
     elif type == "cifar10":
         train_dataset = torchvision.datasets.CIFAR10(root = path,
                                                      train = True,
@@ -44,4 +44,15 @@ def get_dataset(type, path, train_transform = None, test_transform = None):
     else:
         raise ValueError(f"Invalid dataset type. Expected one of : {DATASET_CHOICES}")
 
-    return train_dataset, test_dataset
+    if percent_train_to_use_as_val > 0.0:
+        train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [1-percent_train_to_use_as_val, percent_train_to_use_as_val])
+
+    if percent_data_to_use < 1.0:
+        train_dataset, _ = torch.utils.data.random_split(train_dataset, [percent_data_to_use, 1-percent_data_to_use])
+        if val_dataset is not None:
+            val_dataset, _ = torch.utils.data.random_split(val_dataset, [percent_data_to_use, 1-percent_data_to_use])
+            val_dataset.transform = test_transform
+
+
+    print(f"Total number of training samples : {len(train_dataset)} | Total number of validation samples : {0 if val_dataset is None else len(val_dataset)} | Total number of test samples : {len(test_dataset)}")
+    return train_dataset, val_dataset, test_dataset

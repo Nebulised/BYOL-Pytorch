@@ -1,4 +1,7 @@
 gpu: 0
+num_workers : 4
+num_classes : 10
+
 
 model:
   input_height : 112
@@ -17,9 +20,9 @@ train:
   learning_rate: 0.003
   batch_size: 256
   num_epochs: 100
-  num_workers: 8
   print_every: 50
   checkpoint_every: 20
+  use_percent_train_data : 1.0
 
   augmentation:
     view_1:
@@ -71,11 +74,14 @@ train:
 
 fine_tune:
   learning_rate: 0.005
+  momentum : 0.9
   batch_size: 256
   num_epochs: 80
-  num_workers: 4
   print_every: 50
   checkpoint_every: 15
+  use_percent_train_data : 0.1
+  use_percent_train_data_as_val : 0.1
+  num_classes : 10
 
   augmentation:
     resize_crop:
