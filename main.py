@@ -7,7 +7,7 @@ import torchvision
 import yaml
 
 from augmentations import BYOLAugmenter
-from dataset import get_dataset
+from dataset import get_dataset, DATASET_CHOICES
 from networks import BYOL
 
 
