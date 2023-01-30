@@ -43,9 +43,11 @@ def get_args():
     parser.add_argument("--model-path",
                         type = str)
 
+    parsed_args = parser.parse_args()
+    if parsed_args["run_type"] != "train":
+        assert parsed_args["model_path"] is not None, "The '--model-path' argument must be specified when fine-tuning, performing linear evaluation or inference"
 
-
-    return parser.parse_args()
+    return parsed_args
 
 def get_dataset(type, path, train_transform = None, test_transform = None):
 
