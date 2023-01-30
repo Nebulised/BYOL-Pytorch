@@ -1,63 +1,94 @@
 gpu: 0
 
 model:
-  input_height : 32
-  input_width : 32
-  encoder_model: "resnet50"
-  embedding_size: 1024
+  input_height : 112
+  input_width : 112
+  encoder_model: "resnet18"
+  embedding_size: 512
   num_projection_layers: 1
-  projection_size: 128
-  projection_hidden_layer_size: 2048
+  projection_size: 256
+  projection_hidden_layer_size: 4096
+  name: "byol_model"
+  ema_tau : 0.99
 
 
 
-training:
-  learning_rate: 0.01
-  batch_size: 512
-  num_epochs: 10
-  num_workers: 4
-  print_every: 1
-  checkpoint_every: 1
-  ema_tau: 0.996
+train:
+  learning_rate: 0.003
+  batch_size: 256
+  num_epochs: 100
+  num_workers: 8
+  print_every: 50
+  checkpoint_every: 20
 
   augmentation:
     view_1:
-      random_crop: 1.0
-      random_flip: 0.5
+      resize_crop:
+        apply_probability : 1.0
+      random_flip:
+        apply_probability : 0.5
       colour_jitter:
-        probability: 0.8
-        brightness_adjustment : 0.4
-        contrast_adjustment : 0.4
-        saturation_adjustment: 0.2
-        hue_adjustment: 0.1
-      colour_dropping: 0.2
+        apply_probability: 0.8
+        brightness_delta : 0.4
+        contrast_delta : 0.4
+        saturation_delta: 0.2
+        hue_delta: 0.1
+      colour_drop:
+        apply_probability : 0.2
       gaussian_blur:
-        probability: 1.0
-        kernel_size: [23,23]
-        std: [0.1, 2.0]
-      solarization:
+        apply_probability: 1.0
+        kernel_size: [11, 11]
+        sigma: [0.1, 2.0]
+      solarize:
+        apply_probability : 0.0
         threshold: 0.5
-        probability: 0.0
+      normalise:
+        mean : 0.5
+        std : 0.25
     view_2:
-      random_crop: 1.0
-      random_flip: 0.5
+      resize_crop:
+        apply_probability : 1.0
+      random_flip:
+        apply_probability : 0.5
       colour_jitter:
-        probability: 0.8
-        brightness_adjustment: 0.4
-        contrast_adjustment: 0.4
-        saturation_adjustment: 0.2
-        hue_adjustment: 0.1
-      colour_dropping: 0.2
+        apply_probability: 0.8
+        brightness_delta: 0.4
+        contrast_delta: 0.4
+        saturation_delta: 0.2
+        hue_delta: 0.1
+      colour_drop:
+        apply_probability : 0.2
       gaussian_blur:
-        probability: 0.1
-        kernel_size: [ 23,23 ]
-        std: [ 0.1, 2.0 ]
-      solarization:
+        apply_probability: 0.1
+        kernel_size: [11, 11]
+        sigma: [ 0.1, 2.0 ]
+      solarize:
+        apply_probability: 0.2
         threshold: 0.5
-        probability: 0.2
+      normalise:
+        mean: 0.5
+        std: 0.25
 
-fine_tuning:
+fine_tune:
+  learning_rate: 0.005
+  batch_size: 256
+  num_epochs: 80
+  num_workers: 4
+  print_every: 50
+  checkpoint_every: 15
+
   augmentation:
-    random_crop: 0.5
+    resize_crop:
+      apply_probability: 1.0
+    random_flip:
+      apply_probability: 0.5
+    normalise:
+      mean: 0.5
+      std: 0.25
+test:
+  augmentation:
+    normalise:
+      mean: 0.5
+      std: 0.25
 
 
