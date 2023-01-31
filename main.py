@@ -1,15 +1,13 @@
 import argparse
-import copy
 import time
 
 import mlflow
 import torch
-import torchvision
-import yaml
 
 from augmentations import BYOLAugmenter
 from dataset import get_dataset, DATASET_CHOICES
 from networks import BYOL
+from utils import get_params, log_param_dicts
 
 
 def get_args():
@@ -52,30 +50,8 @@ def get_args():
     return parsed_args
 
 
-def get_params(path):
-    with open(path,
-              "r") as yaml_file:
-        try:
-            return yaml.safe_load(yaml_file)
-        except yaml.YAMLError as yaml_error:
-            print(yaml_error)
-
-
-def log_param_dicts(param_dict, existing_key = None):
-
-    for key, val in param_dict.items():
-        current_concat_key = f"{existing_key}_{key}" if existing_key is not None else key
-        if type(val) is dict:
-            log_param_dicts(val, existing_key = current_concat_key)
-        else:
-            if "every" not in current_concat_key:
-                mlflow.log_param(current_concat_key, val)
-
-
 def main():
     args = get_args()
-
-
     run_type = args.run_type
     model_params = get_params("parameters/model_params.yaml")
     params = get_params(f"parameters/{run_type}_params.yaml")
@@ -89,7 +65,7 @@ def main():
         mlflow.start_run()
         mlflow_enabled = True
         log_param_dicts(param_dict = params)
-        log_param_dicts(param_dict = model_params, existing_key = "model")
+        log_param_dicts(param_dict = model_params, existing_key ="model")
     else:
         mlflow_enabled = False
 
