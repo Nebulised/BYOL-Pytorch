@@ -32,7 +32,7 @@ class BYOL(torch.nn.Module):
                  name : str = "byol_model"):
         super().__init__()
         self.name = name
-        #TODO: Implement tau updating
+        self.fc = None
         self.base_tau = ema_tau
         self.current_tau = ema_tau
         self.current_step = 0
@@ -86,7 +86,11 @@ class BYOL(torch.nn.Module):
                 target_projector_param.data = target_projector_param.data * self.current_tau + (1-self.current_tau) * online_projector_param.data
 
 
-    def save(self, folder_path, epoch, optimiser):
+    def save(self, folder_path, epoch, optimiser, model_save_name = None):
+        if model_save_name is None:
+            model_save_name = f"{self.name}_epoch={epoch}.pt"
+        save_path = os.path.join(folder_path, model_save_name)
+        print(f"Saving model to {save_path}")
         torch.save({"epoch":epoch,
                     "online_encoder_state_dict" : self.online_encoder.state_dict(),
                     "online_projection_head_state_dict" : self.online_projection_head.state_dict(),
@@ -94,10 +98,14 @@ class BYOL(torch.nn.Module):
                     "target_encoder_state_dict" : self.target_encoder.state_dict(),
                     "target_projection_head_state_dict" : self.target_projection_head.state_dict(),
                     "optimiser_state_dict" : optimiser.state_dict(),
-                    "current_step" : self.current_step
-            }, os.path.join(folder_path, f"{self.name}_epoch={epoch}.pt"))
+                    "current_step" : self.current_step,
+                    "base_tau" : self.base_tau,
+                    "fc" : self.fc
+
+            }, save_path)
 
     def load(self, model_path):
+        print(f"Loading model from : {model_path}")
         checkpoint = torch.load(model_path)
         self.online_encoder.load_state_dict(checkpoint["online_encoder_state_dict"])
         self.online_projection_head.load_state_dict(checkpoint["online_projection_head_state_dict"])
@@ -105,8 +113,16 @@ class BYOL(torch.nn.Module):
         self.target_encoder.load_state_dict(checkpoint["target_encoder_state_dict"])
         self.target_projection_head.load_state_dict(checkpoint["target_projection_head_state_dict"])
         self.current_step = checkpoint["current_step"]
+        self.base_tau = checkpoint["base_tau"]
+        self.fc = checkpoint["fc"]
         return checkpoint["optimiser_state_dict"]
 
+
+    def create_fc(self, num_classes):
+        if self.fc is not None:
+            print("[Warning] fc layer is already instantiated")
+        self.fc = torch.nn.Linear(in_features = self.embedding_size,
+                                  out_features = num_classes)
 
 
     def get_all_online_params(self):
@@ -128,7 +144,13 @@ class BYOL(torch.nn.Module):
 
     def forward(self,
                 image_1,
-                image_2):
+                image_2 = None):
+
+        ### Inference
+        if image_2 is None:
+            if self.fc is None:
+                raise Exception("Output FC layer has not been initialised/loaded")
+            return self.fc(self.online_encoder(image_1))
         online_output_1 = self.online_predictor(self.online_projection_head(self.online_encoder(image_1)))
         online_output_2 = self.online_predictor(self.online_projection_head(self.online_encoder(image_2)))
         with torch.no_grad():
