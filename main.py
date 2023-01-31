@@ -45,8 +45,8 @@ def get_args():
     return parsed_args
 
 
-def get_params():
-    with open("params.yaml",
+def get_params(path):
+    with open(path,
               "r") as yaml_file:
         try:
             return yaml.safe_load(yaml_file)
@@ -58,100 +58,79 @@ def get_params():
 
 def main():
     args = get_args()
-    params = get_params()
-    device = torch.device(f"cuda:{params['gpu']}" if torch.cuda.is_available() else "cpu")
+
+
+    run_type = args.run_type
+    model_params = get_params("parameters/model_params.yaml")
+    params = get_params(f"parameters/{run_type}_params.yaml")
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
     num_workers = args.num_workers
     print(f"Running on device : {device}")
-
-    model_params = params["model"]
-    training_params = params["train"]
-    fine_tune_params = params["fine_tune"]
-    test_params = params["test"]
-    run_type = args.run_type
-    if run_type == "train":
-        pre_training = True
-        current_params = training_params
-    else:
-        pre_training = False
-        current_params = fine_tune_params
-
-
-
-
     model = BYOL(max_num_steps = None,
                  **model_params).to(device)
 
-
-
-    batch_size = current_params["batch_size"]
-
-    augmenter = BYOLAugmenter(view_1_params = training_params["augmentation"]["view_1"],
-                              view_2_params = training_params["augmentation"]["view_2"],
-                              fine_tune_params = fine_tune_params["augmentation"],
-                              test_params = test_params["augmentation"],
-                              model_input_width = model.input_width,
-                              model_input_height = model.input_height)
-
-
-
-
-
-
-    train_dataset, val_dataset, test_dataset = get_dataset(type = args.dataset_type,
-                                                           path = args.dataset_path,
-                                                           train_transform = augmenter.self_supervised_pre_train_transform if pre_training else augmenter.fine_tune_augs,
-                                                           test_transform = augmenter.test_augs,
-                                                           percent_data_to_use = current_params["use_percent_train_data"],
-                                                           percent_train_to_use_as_val = 0 if pre_training else current_params["use_percent_train_data_as_val"])
-
-
-
-    train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size = batch_size,
-                                                    shuffle = True,
-                                                    num_workers = num_workers)
-    val_data_loader = torch.utils.data.DataLoader(val_dataset,
-                                                  batch_size = batch_size,
-                                                  shuffle = False,
-                                                  num_workers = num_workers) if val_dataset is not None else None
-    test_data_loader = torch.utils.data.DataLoader(val_dataset,
-                                                   batch_size = 1,
-                                                   shuffle = False,
-                                                   num_workers = num_workers) if test_dataset is not None else None
-
-    print(f"Batch size : {batch_size}")
-
+    byol_augmenter = BYOLAugmenter(model_input_height= model.input_height,
+                                   model_input_width=model.input_width)
 
     if run_type == "train":
+        byol_augmenter.setup_multi_view(view_1_params=params["augmentation"]["view_1"],
+                                        view_2_params=params["augmentation"]["view_2"])
+        dataset, _, _ = get_dataset(type = args.dataset_type,
+                                    train_transform = byol_augmenter.self_supervised_pre_train_transform,
+                                    **params)
+        data_loader = torch.utils.data.DataLoader(dataset = dataset,
+                                                  batch_size = args.batch_size,
+                                                  shuffle = True,
+                                                  num_workers = args.num_workers)
         train_model(device = device,
-                    args = args,
-                    training_params = training_params,
-                    model = model,
-                    train_data_loader = train_data_loader)
+                    checkpoint_output_path=args.model_output_folder_path,
+                    data_loader= data_loader,
+                    **params)
 
     elif args.run_type == "fine-tune":
+        test_params = get_params("parameters/test_params.yaml")
+        train_dataset, val_dataset, _ = get_dataset(args.dataset_type,
+                                                    train_transform = byol_augmenter.get_fine_tune_augmentations(**params["augmentation"]),
+                                                    test_transform = byol_augmenter.get_test_augmentations(**test_params["augmentation"]),
+                                                    **params)
+        train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                        batch_size=args.batch_size,
+                                                        shuffle=True,
+                                                        num_workers=args.num_workers)
+        val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
+                                                      batch_size=args.batch_size,
+                                                      shuffle=True,
+                                                      num_workers=args.num_workers)
+
         fine_tune(model = model,
-                  args = args,
-                  fine_tune_params = fine_tune_params,
                   device = device,
                   train_data_loader = train_data_loader,
-                  val_data_loader = val_data_loader)
+                  val_data_loader = val_data_loader,
+                  model_output_folder_path = args.model_output_folder_path,
+                  **params)
+
 
     elif args.run_type == "eval":
         raise NotImplementedError("Eval mode not implemented yet")
 
 
 def fine_tune(model,
-              args,
-              fine_tune_params,
               device,
               train_data_loader,
-              val_data_loader):
-    model.load(args.model_path)
-    freeze_encoder = fine_tune_params["freeze_encoder"]
-    model.name = model.name + "_fine_tuned"
+              val_data_loader,
+              freeze_encoder,
+              num_classes,
+              learning_rate,
+              momentum,
+              num_epochs,
+              print_every,
+              checkpoint_every,
+              model_output_folder_path,
+              validate_every):
+    freeze_encoder = freeze_encoder
+    model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
-    num_classes = fine_tune_params["num_classes"]
+    num_classes = num_classes
     encoder_model = model.online_encoder.to(device)
     if freeze_encoder:
         for param in encoder_model.parameters():
@@ -161,10 +140,10 @@ def fine_tune(model,
     model.fc.to(device)
 
     optimiser = torch.optim.SGD(model.fc.parameters(),
-                                lr = fine_tune_params["learning_rate"],
-                                momentum = fine_tune_params["momentum"])
+                                lr = learning_rate,
+                                momentum = momentum)
     lowest_val_loss = None
-    for epoch_index in range(fine_tune_params["num_epochs"]):
+    for epoch_index in range(num_epochs):
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
             model_output = model(images)
@@ -173,17 +152,18 @@ def fine_tune(model,
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            if (minibatch_index + 1) % fine_tune_params["print_every"] == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss}")
-        if (epoch_index + 1) % fine_tune_params["checkpoint_every"] == 0:
-            model.save(args.model_output_folder_path,
+            if (minibatch_index + 1) % print_every == 0:
+                print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss}")
+        if (epoch_index + 1) % checkpoint_every == 0:
+            model.save(model_output_folder_path,
                        optimiser = optimiser,
                        epoch = epoch_index)
-        if (epoch_index + 1) % fine_tune_params["validate_every"] == 0:
+        if (epoch_index + 1) % validate_every == 0:
             validation_loss = test(model = model,
                                    test_data_loader = val_data_loader,
                                    device = device)
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model.save(folder_path = args.model_output_folder_path,
+                model.save(folder_path = model,
                            epoch = epoch_index,
                            optimiser = optimiser,
                            model_save_name = "byol_model_fine_tuned_lowest_val.pt")
@@ -191,31 +171,27 @@ def fine_tune(model,
 
 
 
-def train_model(model,
-                device,
-                args,
-                training_params,
-                train_data_loader):
+def train_model(model,   learning_rate, num_epochs, device, print_every,checpoint_every, checkpoint_output_path, data_loader):
     optimiser = torch.optim.Adam(model.get_all_online_params(),
-                                 lr = training_params["learning_rate"])
+                                 lr = learning_rate)
 
-    num_epochs = training_params["num_epochs"]
-    model.set_max_num_steps(len(train_data_loader) * num_epochs)
+
+    model.set_max_num_steps(len(data_loader) * num_epochs)
 
 
     for epoch_index in range(num_epochs):
         epoch_start_time = time.time()
-        for minibatch_index, ((view_1, view_2), _) in enumerate(train_data_loader):
+        for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
             optimiser.zero_grad()
             loss = model(view_1.to(device),
                          view_2.to(device))
             loss.backward()
             optimiser.step()
             model.update_target_network()
-            if (minibatch_index + 1) % training_params["print_every"] == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
+            if (minibatch_index + 1) % print_every == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
         print(f"Time taken for epoch : {time.time() - epoch_start_time}")
-        if (epoch_index + 1) % training_params["checkpoint_every"] == 0:
-            model.save(folder_path = args.model_output_folder_path,
+        if (epoch_index + 1) % checpoint_every == 0:
+            model.save(folder_path = checkpoint_output_path,
                        epoch = epoch_index,
                        optimiser = optimiser)
 

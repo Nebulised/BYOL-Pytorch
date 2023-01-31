@@ -1,0 +1,6 @@
+augmentation:
+  normalise:
+    mean: 0.5
+    std: 0.25
+
+
