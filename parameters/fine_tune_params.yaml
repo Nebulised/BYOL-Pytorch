@@ -1,0 +1,22 @@
+learning_rate: 0.005
+momentum : 0.9
+batch_size: 256
+num_epochs: 30
+print_every: 50
+checkpoint_every: 15
+percent_data_to_use : 1.0
+percent_train_to_use_as_val : 0.1
+num_classes : 10
+validate_every : 1
+freeze_encoder : False
+
+augmentation:
+  resize_crop:
+    apply_probability: 1.0
+  random_flip:
+    apply_probability: 0.5
+  normalise:
+    mean: 0.5
+    std: 0.25
+
+

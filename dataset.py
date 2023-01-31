@@ -12,7 +12,7 @@ DATASET_CHOICES = ["custom",
                    "cifar10"]
 
 
-def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_val = 0.0,  train_transform = None, test_transform = None):
+def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_val = 0.0,  train_transform = None, test_transform = None, **kwargs):
     val_dataset = None
 
     if "emnist" in type:
@@ -46,6 +46,7 @@ def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_va
 
     if percent_train_to_use_as_val > 0.0:
         train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [1-percent_train_to_use_as_val, percent_train_to_use_as_val])
+
 
     if percent_data_to_use < 1.0:
         train_dataset, _ = torch.utils.data.random_split(train_dataset, [percent_data_to_use, 1-percent_data_to_use])

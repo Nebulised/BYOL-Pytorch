@@ -1,0 +1,7 @@
+batch_size : 1
+augmentation:
+  normalise:
+    mean: 0.5
+    std: 0.25
+
+

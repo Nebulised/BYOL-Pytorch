@@ -10,27 +10,22 @@ import torch
 class BYOLAugmenter():
 
     def __init__(self,
-                 view_1_params,
-                 view_2_params,
-                 fine_tune_params,
-                 test_params,
                  model_input_height,
                  model_input_width):
         self.model_input_height = model_input_height
         self.model_input_width = model_input_width
-        for params in (view_1_params, view_2_params, fine_tune_params):
-            params["resize_crop"]["output_height"] = model_input_height
-            params["resize_crop"]["output_width"] = model_input_width
-        self.view_1 = self.create_view(**view_1_params)
-        self.view_2 = self.create_view(**view_2_params)
-        self.fine_tune_augs = self.get_fine_tune_augmentations(**fine_tune_params)
-        self.test_augs = self.get_test_augmentations(**test_params)
+        self.view_1 = None
+        self.view_2 = None
 
 
 
     def self_supervised_pre_train_transform(self, image):
+        assert None not in (self.view_1, self.view_2), "setup_multi_view must be called prior to transform being used"
         return self.view_1(image), self.view_2(image)
 
+    def setup_multi_view(self, view_1_params, view_2_params):
+        self.view_1 = self.create_view(**view_1_params)
+        self.view_2 = self.create_view(**view_2_params)
 
 
 
@@ -38,7 +33,9 @@ class BYOLAugmenter():
                                     resize_crop,
                                     random_flip,
                                     normalise):
-        return torchvision.transforms.Compose([BYOLRandomResize(**resize_crop),
+        return torchvision.transforms.Compose([BYOLRandomResize(output_height=self.model_input_height,
+                                                                output_width=self.model_input_width,
+                                                                **resize_crop),
                                                BYOLHorizontalFlip(**random_flip),
                                                ToTensor(),
                                                Normalize(**normalise)])
@@ -51,8 +48,9 @@ class BYOLAugmenter():
                                                ToTensor(),
                                                Normalize(**normalise)])
 
-    @staticmethod
-    def create_view(resize_crop,
+
+    def create_view(self,
+                    resize_crop,
                     random_flip,
                     colour_jitter,
                     gaussian_blur,
@@ -60,7 +58,9 @@ class BYOLAugmenter():
                     normalise,
                     colour_drop):
         view_augs = []
-        view_augs.append(BYOLRandomResize(**resize_crop))
+        view_augs.append(BYOLRandomResize(output_height=self.model_input_height,
+                                          output_width=self.model_input_width,
+                                          **resize_crop))
         view_augs.append(BYOLHorizontalFlip(**random_flip))
         view_augs.append(BYOLRandomColourJitter(**colour_jitter))
         view_augs.append(BYOLColourDrop(**colour_drop))
