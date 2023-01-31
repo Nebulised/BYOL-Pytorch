@@ -133,7 +133,6 @@ def main():
         fine_tune(model = model,
                   args = args,
                   fine_tune_params = fine_tune_params,
-                  model_params = model_params,
                   device = device,
                   train_data_loader = train_data_loader,
                   val_data_loader = val_data_loader)
@@ -145,39 +144,51 @@ def main():
 def fine_tune(model,
               args,
               fine_tune_params,
-              model_params,
               device,
               train_data_loader,
               val_data_loader):
     model.load(args.model_path)
+    freeze_encoder = fine_tune_params["freeze_encoder"]
+    model.name = model.name + "_fine_tuned"
     loss_function = torch.nn.CrossEntropyLoss()
+    num_classes = fine_tune_params["num_classes"]
+    encoder_model = model.online_encoder.to(device)
+    if freeze_encoder:
+        for param in encoder_model.parameters():
+            param.requires_grad = False
+        encoder_model.eval()
+    model.create_fc(num_classes = num_classes)
+    model.fc.to(device)
 
-    encoder_model = copy.deepcopy(model.online_encoder).to(device)
-    for param in encoder_model.parameters():
-        param.requires_grad = False
-    encoder_model.eval()
-    fc = torch.nn.Linear(in_features = model_params["embedding_size"],
-                         out_features = fine_tune_params["num_classes"])
-
-    full_model = torch.nn.Sequential(encoder_model,
-                                     fc).to(device)
-    optimiser = torch.optim.SGD(fc.parameters(),
+    optimiser = torch.optim.SGD(model.fc.parameters(),
                                 lr = fine_tune_params["learning_rate"],
                                 momentum = fine_tune_params["momentum"])
-
+    lowest_val_loss = None
     for epoch_index in range(fine_tune_params["num_epochs"]):
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
-            model_output = full_model(images)
+            model_output = model(images)
             loss = loss_function(model_output,
                                  labels)
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            if (minibatch_index + 1) % fine_tune_params["print_every"] == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(val_data_loader)} | Loss : {loss}")
-        if (epoch_index + 1) % 15 == 0: test(model = full_model,
-                                             test_data_loader = val_data_loader,
-                                             device = device)
+            if (minibatch_index + 1) % fine_tune_params["print_every"] == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss}")
+        if (epoch_index + 1) % fine_tune_params["checkpoint_every"] == 0:
+            model.save(args.model_output_folder_path,
+                       optimiser = optimiser,
+                       epoch = epoch_index)
+        if (epoch_index + 1) % fine_tune_params["validate_every"] == 0:
+            validation_loss = test(model = model,
+                                   test_data_loader = val_data_loader,
+                                   device = device)
+            if lowest_val_loss is None or validation_loss < lowest_val_loss:
+                model.save(folder_path = args.model_output_folder_path,
+                           epoch = epoch_index,
+                           optimiser = optimiser,
+                           model_save_name = "byol_model_fine_tuned_lowest_val.pt")
+                lowest_val_loss = validation_loss
+
 
 
 def train_model(model,
@@ -191,12 +202,13 @@ def train_model(model,
     num_epochs = training_params["num_epochs"]
     model.set_max_num_steps(len(train_data_loader) * num_epochs)
 
+
     for epoch_index in range(num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, ((view_1, view_2), _) in enumerate(train_data_loader):
             optimiser.zero_grad()
-            loss = model.forward(view_1.to(device),
-                                 view_2.to(device))
+            loss = model(view_1.to(device),
+                         view_2.to(device))
             loss.backward()
             optimiser.step()
             model.update_target_network()
@@ -214,17 +226,20 @@ def test(model,
     model.eval()
     correct = 0
     total = 0
-
+    loss_function = torch.nn.CrossEntropyLoss()
+    losses = []
     with torch.no_grad():
         for images, labels in test_data_loader:
             images, labels = images.to(device), labels.to(device)
             output = model(images)
+            losses.append(loss_function(output, labels).item())
             _, predicted = torch.max(output.data,
                                      1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
     print(f'Accuracy of the network on the {total} test images: {100 * correct // total} %')
     model.train()
+    return sum(losses)/len(losses)
 
 
 if __name__ == '__main__':
