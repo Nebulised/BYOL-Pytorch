@@ -27,7 +27,7 @@ def get_args():
                         required = True)
     parser.add_argument("--run-type",
                         type = str,
-                        choices = ["train", "fine-tune", "eval"],
+                        choices = ["train", "fine_tune", "eval"],
                         required = True,
                         help = "Whether to train, fine-tune or eval")
     parser.add_argument("--gpu",
@@ -77,29 +77,33 @@ def main():
         byol_augmenter.setup_multi_view(view_1_params=params["augmentation"]["view_1"],
                                         view_2_params=params["augmentation"]["view_2"])
         dataset, _, _ = get_dataset(type = args.dataset_type,
+                                    path = args.dataset_path,
                                     train_transform = byol_augmenter.self_supervised_pre_train_transform,
                                     **params)
         data_loader = torch.utils.data.DataLoader(dataset = dataset,
-                                                  batch_size = args.batch_size,
+                                                  batch_size = params["batch_size"],
                                                   shuffle = True,
                                                   num_workers = args.num_workers)
-        train_model(device = device,
+        train_model(model = model,
+                    device = device,
                     checkpoint_output_path=args.model_output_folder_path,
                     data_loader= data_loader,
                     **params)
 
-    elif args.run_type == "fine-tune":
+    elif args.run_type == "fine_tune":
         test_params = get_params("parameters/test_params.yaml")
-        train_dataset, val_dataset, _ = get_dataset(args.dataset_type,
+        train_dataset, val_dataset, _ = get_dataset(type = args.dataset_type,
+                                                    path = args.dataset_path,
                                                     train_transform = byol_augmenter.get_fine_tune_augmentations(**params["augmentation"]),
                                                     test_transform = byol_augmenter.get_test_augmentations(**test_params["augmentation"]),
                                                     **params)
+
         train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                        batch_size=args.batch_size,
+                                                        batch_size=params["batch_size"],
                                                         shuffle=True,
                                                         num_workers=args.num_workers)
         val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
-                                                      batch_size=args.batch_size,
+                                                      batch_size=test_params["batch_size"],
                                                       shuffle=True,
                                                       num_workers=args.num_workers)
 
@@ -115,6 +119,8 @@ def main():
         raise NotImplementedError("Eval mode not implemented yet")
 
 
+
+
 def fine_tune(model,
               device,
               train_data_loader,
@@ -127,7 +133,8 @@ def fine_tune(model,
               print_every,
               checkpoint_every,
               model_output_folder_path,
-              validate_every):
+              validate_every,
+              **kwargs):
     freeze_encoder = freeze_encoder
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
@@ -164,7 +171,7 @@ def fine_tune(model,
                                    test_data_loader = val_data_loader,
                                    device = device)
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model.save(folder_path = model,
+                model.save(folder_path = model_output_folder_path,
                            epoch = epoch_index,
                            optimiser = optimiser,
                            model_save_name = "byol_model_fine_tuned_lowest_val.pt")
@@ -172,7 +179,7 @@ def fine_tune(model,
 
 
 
-def train_model(model,   learning_rate, num_epochs, device, print_every,checpoint_every, checkpoint_output_path, data_loader):
+def train_model(model, learning_rate, num_epochs, device, print_every,checkpoint_every, checkpoint_output_path, data_loader, **kwargs):
     optimiser = torch.optim.Adam(model.get_all_online_params(),
                                  lr = learning_rate)
 
@@ -189,9 +196,9 @@ def train_model(model,   learning_rate, num_epochs, device, print_every,checpoin
             loss.backward()
             optimiser.step()
             model.update_target_network()
-            if (minibatch_index + 1) % print_every == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
+            if (minibatch_index + 1) % print_every == 0: print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
         print(f"Time taken for epoch : {time.time() - epoch_start_time}")
-        if (epoch_index + 1) % checpoint_every == 0:
+        if (epoch_index + 1) % checkpoint_every == 0:
             model.save(folder_path = checkpoint_output_path,
                        epoch = epoch_index,
                        optimiser = optimiser)
