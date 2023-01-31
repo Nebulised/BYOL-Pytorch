@@ -30,7 +30,8 @@ def get_args():
                         choices = ["train", "fine-tune", "eval"],
                         required = True,
                         help = "Whether to train, fine-tune or eval")
-
+    parser.add_argument("--gpu",
+                        type = int)
     parser.add_argument("--model-path",
                         type = str)
     parser.add_argument("--num-workers",
