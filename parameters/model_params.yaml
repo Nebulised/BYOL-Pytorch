@@ -1,10 +1,9 @@
-model:
-  input_height : 112
-  input_width : 112
-  encoder_model: "resnet18"
-  embedding_size: 512
-  num_projection_layers: 1
-  projection_size: 256
-  projection_hidden_layer_size: 4096
-  name: "byol_model"
-  ema_tau : 0.99
+input_height : 112
+input_width : 112
+encoder_model: "resnet18"
+embedding_size: 512
+num_projection_layers: 1
+projection_size: 256
+projection_hidden_layer_size: 4096
+name: "byol_model"
+ema_tau : 0.99
