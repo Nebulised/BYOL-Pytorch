@@ -1,6 +1,5 @@
 gpu: 0
-num_workers : 4
-num_classes : 10
+
 
 
 model:
@@ -76,12 +75,14 @@ fine_tune:
   learning_rate: 0.005
   momentum : 0.9
   batch_size: 256
-  num_epochs: 80
+  num_epochs: 30
   print_every: 50
   checkpoint_every: 15
-  use_percent_train_data : 0.1
+  use_percent_train_data : 1.0
   use_percent_train_data_as_val : 0.1
   num_classes : 10
+  validate_every : 1
+  freeze_encoder : False
 
   augmentation:
     resize_crop:
