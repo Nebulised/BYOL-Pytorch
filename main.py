@@ -96,6 +96,7 @@ def main():
     print(f"Running on device : {device}")
     model = BYOL(max_num_steps = None,
                  **model_params).to(device)
+    if args.model_path is not None : model.load(args.model_path)
 
     byol_augmenter = BYOLAugmenter(model_input_height= model.input_height,
                                    model_input_width=model.input_width)
@@ -191,7 +192,7 @@ def fine_tune(model,
             model_output = model(images)
             loss = loss_function(model_output,
                                  labels)
-            losses.append(loss.item())
+            losses.append(loss.detach().item())
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
@@ -209,7 +210,7 @@ def fine_tune(model,
                                    test_data_loader = val_data_loader,
                                    device = device)
             if mlflow_enabled :
-                mlflow.log_metric("Validation loss", validation_loss.item(), step = epoch_index)
+                mlflow.log_metric("Validation loss", validation_loss, step = epoch_index)
                 mlflow.log_metric("Validation acc", acc, step = epoch_index)
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
                 model.save(folder_path = model_output_folder_path,
@@ -235,7 +236,7 @@ def train_model(model, learning_rate, num_epochs, device, print_every,checkpoint
             optimiser.zero_grad()
             loss = model(view_1.to(device),
                          view_2.to(device))
-            losses.append(loss.item())
+            losses.append(loss.detach().item())
             loss.backward()
             optimiser.step()
             model.update_target_network()
@@ -264,7 +265,7 @@ def test(model,
         for images, labels in test_data_loader:
             images, labels = images.to(device), labels.to(device)
             output = model(images)
-            losses.append(loss_function(output, labels).item())
+            losses.append(loss_function(output, labels).detach().item())
             _, predicted = torch.max(output.data,
                                      1)
             total += labels.size(0)
