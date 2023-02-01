@@ -202,9 +202,10 @@ def fine_tune(model,
                                              sum(losses)/len(losses),
                                              step = epoch_index)
         if (epoch_index + 1) % checkpoint_every == 0:
-            model.save(model_output_folder_path,
-                       optimiser = optimiser,
-                       epoch = epoch_index)
+            saved_model_path = model.save(model_output_folder_path,
+                                          optimiser = optimiser,
+                                          epoch = epoch_index)
+            if mlflow_enabled : mlflow.log_artifact(f"model_epoch={epoch_index}.pt", saved_model_path)
         if (epoch_index + 1) % validate_every == 0:
             validation_loss, acc = test(model = model,
                                    test_data_loader = val_data_loader,
@@ -213,11 +214,12 @@ def fine_tune(model,
                 mlflow.log_metric("Validation loss", validation_loss, step = epoch_index)
                 mlflow.log_metric("Validation acc", acc, step = epoch_index)
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model.save(folder_path = model_output_folder_path,
-                           epoch = epoch_index,
-                           optimiser = optimiser,
-                           model_save_name = "byol_model_fine_tuned_lowest_val.pt")
+                model_save_path = model.save(folder_path = model_output_folder_path,
+                                             epoch = epoch_index,
+                                             optimiser = optimiser,
+                                             model_save_name = "byol_model_fine_tuned_lowest_val.pt")
                 lowest_val_loss = validation_loss
+                if mlflow_enabled : mlflow.log_artifact("model_lowest_val.pt",model_save_path)
 
 
 
@@ -248,9 +250,11 @@ def train_model(model, learning_rate, num_epochs, device, print_every,checkpoint
                               step = epoch_index)
             mlflow.log_metric("Ema Tau", model.current_tau)
         if (epoch_index + 1) % checkpoint_every == 0:
-            model.save(folder_path = checkpoint_output_path,
-                       epoch = epoch_index,
-                       optimiser = optimiser)
+            model_save_path = model.save(folder_path = checkpoint_output_path,
+                                         epoch = epoch_index,
+                                         optimiser = optimiser)
+            if mlflow_enabled : mlflow.log_artifact(f"model_epoch={epoch_index}", model_save_path)
+
 
 
 def test(model,
