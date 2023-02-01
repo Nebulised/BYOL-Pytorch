@@ -12,30 +12,57 @@ DATASET_CHOICES = ["custom",
                    "cifar10"]
 
 
-def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_val = 0.0,  train_transform = None, test_transform = None, **kwargs):
+def get_dataset(type : str,
+                path : str,
+                percent_data_to_use : float=1.0,
+                percent_train_to_use_as_val : float=0.0,
+                train_transform=None,
+                test_transform=None,
+                **kwargs):
+    """Method for getting train/val/test datasets
+
+    Args:
+        type:
+            Type of dataset
+            One of those in DATASET_CHOICES constant
+        path:
+            Path to src folder of dataset
+        percent_data_to_use:
+            Percent of data to use for training/validation set
+        percent_train_to_use_as_val:
+            Perent of training data to use as validation data
+        train_transform:
+            Transforms to apply to train data
+        test_transform:
+            Transforms to apply to val/test data
+        **kwargs:
+
+    Returns:
+        train dataset, val dataset, test dataset
+    """
     val_dataset = None
 
     if "emnist" in type:
         _, split = type.split("_")
-        train_dataset =  torchvision.datasets.EMNIST(root=path,
-                                                     split=split,
-                                                     train=True,
-                                                     download=False,
-                                                     transform=train_transform)
+        train_dataset = torchvision.datasets.EMNIST(root=path,
+                                                    split=split,
+                                                    train=True,
+                                                    download=False,
+                                                    transform=train_transform)
         test_dataset = torchvision.datasets.EMNIST(root=path,
                                                    split=split,
                                                    train=False,
                                                    download=False,
                                                    transform=test_transform)
     elif type == "cifar10":
-        train_dataset = torchvision.datasets.CIFAR10(root = path,
-                                                     train = True,
-                                                     download = False,
-                                                     transform = train_transform)
-        test_dataset = torchvision.datasets.CIFAR10(root = path,
-                                                   train = False,
-                                                   download = False,
-                                                   transform = test_transform)
+        train_dataset = torchvision.datasets.CIFAR10(root=path,
+                                                     train=True,
+                                                     download=False,
+                                                     transform=train_transform)
+        test_dataset = torchvision.datasets.CIFAR10(root=path,
+                                                    train=False,
+                                                    download=False,
+                                                    transform=test_transform)
 
 
 
@@ -45,15 +72,18 @@ def get_dataset(type, path,percent_data_to_use = 1.0, percent_train_to_use_as_va
         raise ValueError(f"Invalid dataset type. Expected one of : {DATASET_CHOICES}")
 
     if percent_train_to_use_as_val > 0.0:
-        train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [1-percent_train_to_use_as_val, percent_train_to_use_as_val])
-
+        train_dataset, val_dataset = torch.utils.data.random_split(train_dataset,
+                                                                   [1 - percent_train_to_use_as_val,
+                                                                    percent_train_to_use_as_val])
 
     if percent_data_to_use < 1.0:
-        train_dataset, _ = torch.utils.data.random_split(train_dataset, [percent_data_to_use, 1-percent_data_to_use])
+        train_dataset, _ = torch.utils.data.random_split(train_dataset,
+                                                         [percent_data_to_use, 1 - percent_data_to_use])
         if val_dataset is not None:
-            val_dataset, _ = torch.utils.data.random_split(val_dataset, [percent_data_to_use, 1-percent_data_to_use])
+            val_dataset, _ = torch.utils.data.random_split(val_dataset,
+                                                           [percent_data_to_use, 1 - percent_data_to_use])
             val_dataset.transform = test_transform
 
-
-    print(f"Total number of training samples : {len(train_dataset)} | Total number of validation samples : {0 if val_dataset is None else len(val_dataset)} | Total number of test samples : {len(test_dataset)}")
+    print(
+        f"Total number of training samples : {len(train_dataset)} | Total number of validation samples : {0 if val_dataset is None else len(val_dataset)} | Total number of test samples : {len(test_dataset)}")
     return train_dataset, val_dataset, test_dataset
