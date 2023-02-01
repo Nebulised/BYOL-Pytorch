@@ -205,7 +205,7 @@ def fine_tune(model,
             saved_model_path = model.save(model_output_folder_path,
                                           optimiser = optimiser,
                                           epoch = epoch_index)
-            if mlflow_enabled : mlflow.log_artifact(f"model_epoch={epoch_index}.pt", saved_model_path)
+            if mlflow_enabled : mlflow.log_artifact(saved_model_path,"checkpoints")
         if (epoch_index + 1) % validate_every == 0:
             validation_loss, acc = test(model = model,
                                    test_data_loader = val_data_loader,
@@ -219,7 +219,7 @@ def fine_tune(model,
                                              optimiser = optimiser,
                                              model_save_name = "byol_model_fine_tuned_lowest_val.pt")
                 lowest_val_loss = validation_loss
-                if mlflow_enabled : mlflow.log_artifact("model_lowest_val.pt",model_save_path)
+                if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
 
 
 
@@ -253,7 +253,8 @@ def train_model(model, learning_rate, num_epochs, device, print_every,checkpoint
             model_save_path = model.save(folder_path = checkpoint_output_path,
                                          epoch = epoch_index,
                                          optimiser = optimiser)
-            if mlflow_enabled : mlflow.log_artifact(f"model_epoch={epoch_index}", model_save_path)
+
+            if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
 
 
 
