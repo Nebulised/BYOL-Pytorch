@@ -103,6 +103,7 @@ class BYOL(torch.nn.Module):
                     "fc" : self.fc
 
             }, save_path)
+        return save_path
 
     def load(self, model_path):
         print(f"Loading model from : {model_path}")
