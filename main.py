@@ -307,8 +307,13 @@ def train_model(model,
     Returns:
         None
     """
-    optimiser = torch.optim.Adam(model.get_all_online_params(),
-                                 lr=learning_rate)
+
+    optimiser = torch.optim.Adam([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
+                                 lr=learning_rate,
+                                 weight_decay = 0.0000015 )
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
+                                                           T_max = num_epochs)
 
     model.set_max_num_steps(len(data_loader) * num_epochs)
 
@@ -325,7 +330,9 @@ def train_model(model,
             model.update_target_network()
             if (minibatch_index + 1) % print_every == 0: print(
                 f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
-        print(f"Time taken for epoch : {time.time() - epoch_start_time}")
+        scheduler.step()
+        current_lr = scheduler.get_last_lr()[0]
+
 
         #Log mlflow appropriate data
         if mlflow_enabled:
@@ -333,13 +340,17 @@ def train_model(model,
                               sum(losses) / len(losses),
                               step=epoch_index)
             mlflow.log_metric("Ema Tau",
-                              model.current_tau)
+                              model.current_tau,
+                              step = epoch_index)
+            mlflow.log_metric("scheduler lr", current_lr,
+                              step = epoch_index)
         if (epoch_index + 1) % checkpoint_every == 0:
             model_save_path = model.save(folder_path = checkpoint_output_folder_path,
                                          epoch = epoch_index,
                                          optimiser = optimiser)
 
             if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
+        print(f"Time taken for epoch : {time.time() - epoch_start_time}")
 
 
 
