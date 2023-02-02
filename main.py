@@ -227,7 +227,8 @@ def fine_tune(model: BYOL,
 
     optimiser = torch.optim.SGD(model.fc.parameters(),
                                 lr=learning_rate,
-                                momentum=momentum)
+                                momentum=momentum,
+                                nesterov = True)
     lowest_val_loss = None
 
     # Fine tuning
