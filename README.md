@@ -2,69 +2,43 @@
 ## Implemented in Pytorch
 
 ---
-This is a pytorch implementation of the ["Bootstrap Your Own Latent
+This is an unofficial pytorch implementation of the ["Bootstrap Your Own Latent
 A New Approach to Self-Supervised Learning"](https://arxiv.org/pdf/2006.07733.pdf#section.4) paper.
 
 The official repo by the authors can be found [here](https://github.com/deepmind/deepmind-research/tree/master/byol)
 
-This repo is designed to be as close to the original implementation as possible. 
+This repo is designed to be as close to the original tensorflow implementation as possible. 
 
 ---
 ### Implemented Features
 * All augmentation types
   * Randomised colour jitter as per the paper
+  * Proper colour dropping through PIL image grayscale conversion
 * Exponential Moving Average(EMA) target network
-  * Base EMA Tau -> 1.0 over course of pre training
-* Linear evaluation training 
+  * Base EMA Tau -> 1.0 over course of pre-training
+* Linear evaluation training
 * Supports Emnist and CIFAR-10 datasets currently 
+* Optional mlflow integration
  ---
 ### Known Missing Features
-* Lars optimiser
-* Full fine-tuning
-
+* LARS optimiser
+* Weight decay
 ---
 ### Self-Supervised Training
-Example command to  train on the CIFAR-10 dataset 
+Example command to  train on the CIFAR-10 dataset on GPU 0 from scratch with 8 workers per dataloader
 ```commandline
-python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --model-output-folder-path "/path/to/save/folder/to/" --run-type "train"
+python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --model-output-folder-path "/path/to/save/folder/to/" --run-type "train" --gpu 0 --num-workers 8
 ```
-####
-Arguments
- * --run-type
-   * Expected type : string
-   * Optional? : NO
-   * Choices
-     * train
-     * fine-tune
-     * eval
-   * **This must be set to "train" for self-supervised training**
- * --model-output-folder-path
-   * Expected type : string
-   * Optional? : YES
-   * If this argument is specified the model checkpoint files will be saved within this folder. Models will not be saved if this is not specified. 
- * --dataset-path 
-   * Expected type : string
-   * Optional? NO
-   * Path to the dataset src folder (not the individual train/test/val folder)
- * --dataset-type
-   * Expected type : string
-   * Optional? NO
-   * Choices
-     * custom
-     * emnist_by-class
-     * emnist_by-merge
-     * emnist_balanced
-     * emnist_letters
-     * emnist_digits
-     * emnist_mnist
-     * cifar10
-   * Dataset type. If training on your own dataset use the "custom" option.
+---
+### Fine-Tune
+Example command to fine-tune on the CIFAR-10 dataset on GPU 0 from scratch with 8 workers per dataloader
+```commandline
+python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --model-output-folder-path "/path/to/save/folder/to/" --run-type "fine_tune" --model-path "/path/to/pre-trained/model" --gpu 0 --num-workers 8
+```
 
 ---
-### Linear Evaluation 
-```commandline
-python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --model-output-folder-path "/path/to/save/folder/to/" --run-type "train" --model-path "/path/to/pre-trained/model"
-```
+### Argument Info 
+
  * --run-type
    * Expected type : string
    * Optional? : NO
@@ -72,7 +46,7 @@ python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --mod
      * train
      * fine-tune
      * eval
-   * **This must be set to "fine-tune" for linear evaluation training**
+   * ****
  * --model-output-folder-path
    * Expected type : string
    * Optional? : YES
@@ -96,14 +70,48 @@ python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --mod
    * Dataset type. If training on your own dataset use the "custom" option.
  * --model-path
    * Expected type : string
-   * Optional? NO 
+   * Optional? NO if run-type=="train" else YES
    * Path to the pre-trained model
+ * --num-workers
+   * Expected type : int 
+   * Optional? YES
+     * Defaults to 0
+   * Nun workers for each dataloader (1 dataloader when self-supervised training, 2 dataloaders when fine-tuning )
+   * When num_workers > 0 multiprocessing is used for the num workers specified
+ * --gpu
+   * Expected type : int
+   * Optional? YES
+   * Which GPU to run training/validation on
+ * --mflow-tracking-uri
+   * Expected type : string
+   * Optional? YES
+   * If specified mlflow logging/use is enabled
+   * Sets mlflow tracking-uri to value passed for this arg
+ * --mlflow-experiment-name
+   * Expected type : string
+   * Optional? YES
+     * Defaults to "byol_experiment"
+   * Sets mlflow experiment name to value passed
+   * If mlflow tracking-uri is not specified this arg does nothing
+
+---
+
+### Mlflow Integration
+
+This repo is designed to log parameters, metrics and the models as artifacts.
+This is only done if the set-tracking-uri argument is specified.
+Otherwise, this repo can be used fine without mlflow installed.
+
+ 
+---
 
 ### TODO
-* Lars Optimiser
-* Validate results on CIFAR-10 dataset
-* Implement full fine-tuning
-* Implement resumable training
-* Log/Graph results
-* Docstring 
-* Multi-GPU support 
+ - [ ] Implement LARS Optimiser
+ - [ ] Validate results on CIFAR-10 dataset
+ - [X] Implement Linear evaluation fine-tuning
+ - [ ] Implement logistic regression fine-tuning
+ - [ ] Implement resumable training
+ - [X] Mlflow integration
+ - [X] Docstring
+ - [ ] Multi-GPU support
+ - [ ] Allow use with custom dataset types 
