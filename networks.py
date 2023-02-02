@@ -63,7 +63,6 @@ class BYOL(torch.nn.Module):
     def __init__(self,
                  max_num_steps : int,
                  encoder_model: str = "resnet50",
-                 embedding_size: int = 128,
                  num_projection_layers: int = 1,
                  projection_size: int = 128,
                  num_predictor_layers: int = 1,
@@ -80,8 +79,6 @@ class BYOL(torch.nn.Module):
                 Used for calculation of exponential moving average tau value
             encoder_model:
                 The backbone model. E.g. "Resnet50" or "Resnet18"
-            embedding_size:
-                Output size of the embedding network
             num_projection_layers:
                 Num hidden layers in projection head
                 Currently not used
@@ -116,6 +113,7 @@ class BYOL(torch.nn.Module):
 
         self.online_encoder = get_model(name=encoder_model,
                                         weights=None)
+        self.embedding_size = self.online_encoder.fc.in_features
         # Remove the linear output layer
         self.online_encoder.fc = torch.nn.Identity()
 
