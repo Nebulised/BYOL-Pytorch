@@ -326,11 +326,17 @@ class BYOL(torch.nn.Module):
                 torch.Tensor : Average regression loss
         """
 
+        if image_1.shape[-2:] != (self.input_height, self.input_width):
+            raise ValueError(f"Expected image shape of {(self.input_height, self.input_width)} but got {image_2.shape[-2:]} for image_1")
         ### Inference
         if image_2 is None:
             if self.fc is None:
                 raise Exception("Output FC layer has not been initialised/loaded")
             return self.fc(self.online_encoder(image_1))
+
+        if image_2.shape[-2:] != (self.input_height, self.input_width):
+            raise ValueError(f"Expected image shape of {(self.input_height, self.input_width)} but got {image_2.shape[-2:]} for image_1")
+
         online_output_1 = self.online_predictor(self.online_projection_head(self.online_encoder(image_1)))
         online_output_2 = self.online_predictor(self.online_projection_head(self.online_encoder(image_2)))
 
