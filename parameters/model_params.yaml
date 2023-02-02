@@ -6,4 +6,4 @@ num_projection_layers: 1
 projection_size: 256
 projection_hidden_layer_size: 4096
 name: "byol_model"
-ema_tau : 0.99
+base_ema_tau : 0.99
