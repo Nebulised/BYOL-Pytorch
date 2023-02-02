@@ -90,6 +90,9 @@ class BYOLAugmenter:
         return torchvision.transforms.Compose([BYOLRandomResize(output_height=self.resize_output_height,
                                                                 output_width=self.resize_output_width,
                                                                 **resize_crop),
+                                               torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                                                     self.resize_output_width),
+                                                                             interpolation = InterpolationMode.BICUBIC),
                                                BYOLHorizontalFlip(**random_flip),
                                                ToTensor(),
                                                Normalize(**normalise)])
@@ -148,6 +151,9 @@ class BYOLAugmenter:
         view_augs.append(BYOLRandomResize(output_height=self.resize_output_height,
                                           output_width=self.resize_output_width,
                                           **resize_crop))
+        view_augs.append(torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                               self.resize_output_width),
+                                                       interpolation = InterpolationMode.BICUBIC))
         view_augs.append(BYOLHorizontalFlip(**random_flip))
         view_augs.append(BYOLRandomColourJitter(**colour_jitter))
         view_augs.append(BYOLColourDrop(**colour_drop))
