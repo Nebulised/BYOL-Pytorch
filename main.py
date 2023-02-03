@@ -84,6 +84,8 @@ def main():
         log_param_dicts(param_dict=params)
         log_param_dicts(param_dict=model_params,
                         existing_key="model")
+        # Vars converts namespace object to dict
+        log_param_dicts(param_dict=vars(args))
     else:
         mlflow_enabled = False
 
