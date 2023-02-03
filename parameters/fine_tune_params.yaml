@@ -8,7 +8,7 @@ validate_every : 1
 freeze_encoder : False
 
 optimiser_params:
-  learning_rate : 0.005
+  lr : 0.005
   momentum : 0.9
   nesterov : True
 
