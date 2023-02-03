@@ -162,7 +162,6 @@ def fine_tune(model: BYOL,
               num_classes: int,
               optimiser_params : dict,
               num_epochs: int,
-              print_every: int,
               checkpoint_every: int,
               checkpoint_output_folder_path: str,
               validate_every: int,
@@ -194,8 +193,6 @@ def fine_tune(model: BYOL,
             Momentum for sgd optimiser
         num_epochs:
             Num epochs to fine tune for
-        print_every:
-            How often to print training info
         checkpoint_every:
             How often to save checkpoint models
         checkpoint_output_folder_path:
@@ -272,7 +269,6 @@ def train_model(model,
                 optimiser_params,
                 num_epochs,
                 device,
-                print_every,
                 checkpoint_every,
                 checkpoint_output_folder_path,
                 data_loader,
@@ -289,8 +285,6 @@ def train_model(model,
             Num epochs to train for
         device:
             Device to put model/data on to
-        print_every:
-            How often to print training info
         checkpoint_every:
             How often to save checkpoint models
         checkpoint_output_folder_path:
