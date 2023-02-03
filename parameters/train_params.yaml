@@ -1,6 +1,5 @@
 batch_size: 256
 num_epochs: 100
-print_every: 50
 checkpoint_every: 20
 use_percent_train_data : 1.0
 
