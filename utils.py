@@ -129,7 +129,7 @@ class TrainingTracker:
             None
 
         """
-        for param, average_value in self.get_average_metrics():
+        for param, average_value in self.get_average_metrics().items():
             mlflow.log_metric(param, average_value, step=self.current_epoch)
 
     def increment_epoch(self):
