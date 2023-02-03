@@ -230,7 +230,7 @@ def fine_tune(model: BYOL,
 
     # Fine tuning
     for epoch_index in range(num_epochs):
-        losses = []
+        epoch_start_time = time.time()
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
             model_output = model(images)
@@ -264,6 +264,7 @@ def fine_tune(model: BYOL,
                 lowest_val_loss = validation_loss
                 if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
         metric_tracker.increment_epoch()
+        print(f"Time taken for epoch : {time.time() - epoch_start_time}")
 
 def train_model(model,
                 optimiser_params,
