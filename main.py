@@ -7,7 +7,7 @@ import torch
 from augmentations import BYOLAugmenter
 from dataset import get_dataset, DATASET_CHOICES
 from networks import BYOL
-from utils import get_params, log_param_dicts
+from utils import get_params, log_param_dicts, TrainingTracker
 
 
 def get_args():
@@ -212,6 +212,7 @@ def fine_tune(model: BYOL,
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
     num_classes = num_classes
+    metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
 
     ### Setting up model
     encoder_model = model.online_encoder.to(device)
@@ -236,27 +237,26 @@ def fine_tune(model: BYOL,
             model_output = model(images)
             loss = loss_function(model_output,
                                  labels)
-            losses.append(loss.detach().item())
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            if (minibatch_index + 1) % print_every == 0:
-                print(f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(train_data_loader)} | Loss : {loss}")
-        if mlflow_enabled: mlflow.log_metric("Fine-Tune Loss",
-                                             sum(losses) / len(losses),
-                                             step=epoch_index)
+            metric_tracker.log_metric("Train Loss", loss.item())
+
         if (epoch_index + 1) % checkpoint_every == 0:
             saved_model_path = model.save(checkpoint_output_folder_path,
                                           optimiser = optimiser,
                                           epoch = epoch_index)
             if mlflow_enabled : mlflow.log_artifact(saved_model_path,"checkpoints")
+
+        ### Validate trained model
         if (epoch_index + 1) % validate_every == 0:
-            validation_loss, acc = test(model = model,
-                                   test_data_loader = val_data_loader,
-                                   device = device)
-            if mlflow_enabled :
-                mlflow.log_metric("Validation loss", validation_loss, step = epoch_index)
-                mlflow.log_metric("Validation acc", acc, step = epoch_index)
+            validation_loss, val_acc = test(model = model,
+                                            test_data_loader = val_data_loader,
+                                            device = device)
+            metric_tracker.log_metric("Validation Loss", validation_loss)
+            metric_tracker.log_metric("Validation Accuracy", val_acc)
+
+            ### Save lowest validation loss model
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
                 model_save_path = model.save(folder_path = checkpoint_output_folder_path,
                                              epoch = epoch_index,
@@ -264,7 +264,7 @@ def fine_tune(model: BYOL,
                                              model_save_name = "byol_model_fine_tuned_lowest_val.pt")
                 lowest_val_loss = validation_loss
                 if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
-
+        metric_tracker.increment_epoch()
 
 def train_model(model,
                 optimiser_params,
@@ -312,40 +312,31 @@ def train_model(model,
                                                            T_max = num_epochs)
 
     model.set_max_num_steps(len(data_loader) * num_epochs)
-
+    metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
     for epoch_index in range(num_epochs):
         epoch_start_time = time.time()
-        losses = []
         for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
             loss = model(view_1.to(device),
                          view_2.to(device))
-            losses.append(loss.detach().item())
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
             model.update_target_network()
-            if (minibatch_index + 1) % print_every == 0: print(
-                f"Epoch {epoch_index} | Minibatch {minibatch_index} / {len(data_loader)} | Loss : {loss} | Current tau : {model.current_tau}")
-        scheduler.step()
+            metric_tracker.log_metric("Train Loss", loss.item())
+            metric_tracker.log_metric("Ema Tau", model.current_tau)
+
         current_lr = scheduler.get_last_lr()[0]
+        metric_tracker.log_metric("Scheduler LR", current_lr)
+        scheduler.step()
 
 
-        #Log mlflow appropriate data
-        if mlflow_enabled:
-            mlflow.log_metric("Train Loss",
-                              sum(losses) / len(losses),
-                              step=epoch_index)
-            mlflow.log_metric("Ema Tau",
-                              model.current_tau,
-                              step = epoch_index)
-            mlflow.log_metric("scheduler lr", current_lr,
-                              step = epoch_index)
         if (epoch_index + 1) % checkpoint_every == 0:
             model_save_path = model.save(folder_path = checkpoint_output_folder_path,
                                          epoch = epoch_index,
                                          optimiser = optimiser)
 
             if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
+        metric_tracker.increment_epoch()
         print(f"Time taken for epoch : {time.time() - epoch_start_time}")
 
 
