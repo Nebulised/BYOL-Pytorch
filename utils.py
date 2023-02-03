@@ -118,7 +118,7 @@ class TrainingTracker:
         Returns:
             None
         """
-        output_string = " | ".join([f"{param} : {average_value}" for param,average_value in self.get_average_metrics()])
+        output_string = " | ".join([f"{param} : {average_value}" for param,average_value in self.get_average_metrics().items()])
         print(f"Epoch : {self.current_epoch} | {output_string}")
 
 
