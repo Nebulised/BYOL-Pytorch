@@ -106,7 +106,6 @@ class BYOL(torch.nn.Module):
         self.current_tau = base_ema_tau
         self.current_step = 0
         self.max_num_steps = max_num_steps
-        self.embedding_size = embedding_size
         self.projection_size = projection_size
         self.input_height = input_height
         self.input_width = input_width
