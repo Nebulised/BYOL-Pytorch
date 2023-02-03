@@ -5,6 +5,9 @@ except:
 import yaml
 
 
+
+
+
 def get_params(path: str):
     """ Loads in yaml file and returns dict of contents
     Args:
@@ -36,13 +39,14 @@ def log_param_dicts(param_dict : dict,
     Returns:
         None
     """
+    EXCLUDED_STRINGS = ("every", "mlflow")
     for key, val in param_dict.items():
         current_concat_key = f"{existing_key}_{key}" if existing_key is not None else key
         if type(val) is dict:
             log_param_dicts(val,
                             existing_key=current_concat_key)
         else:
-            if "every" not in current_concat_key:
+            if not any(excluded_string in current_concat_key for excluded_string in EXCLUDED_STRINGS):
                 mlflow.log_param(current_concat_key,
                                  val)
 
