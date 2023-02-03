@@ -1,9 +1,14 @@
-learning_rate: 0.0003
 batch_size: 256
 num_epochs: 100
 print_every: 50
 checkpoint_every: 20
 use_percent_train_data : 1.0
+
+optimiser_params:
+  learning_rate : 0.005
+  momentum : 0.9
+  nesterov : True
+
 
 augmentation:
   view_1:

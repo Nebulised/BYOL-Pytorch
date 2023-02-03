@@ -158,8 +158,7 @@ def fine_tune(model: BYOL,
               val_data_loader: torch.utils.data.DataLoader,
               freeze_encoder: bool,
               num_classes: int,
-              learning_rate: float,
-              momentum: float,
+              optimiser_params : dict,
               num_epochs: int,
               print_every: int,
               checkpoint_every: int,
@@ -226,9 +225,7 @@ def fine_tune(model: BYOL,
     model.fc.to(device)
 
     optimiser = torch.optim.SGD(model.fc.parameters(),
-                                lr=learning_rate,
-                                momentum=momentum,
-                                nesterov = True)
+                                **optimiser_params)
     lowest_val_loss = None
 
     # Fine tuning
@@ -270,7 +267,7 @@ def fine_tune(model: BYOL,
 
 
 def train_model(model,
-                learning_rate,
+                optimiser_params,
                 num_epochs,
                 device,
                 print_every,
@@ -308,9 +305,8 @@ def train_model(model,
         None
     """
 
-    optimiser = torch.optim.Adam([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
-                                 lr=learning_rate,
-                                 weight_decay = 0.0000015 )
+    optimiser = torch.optim.SGD([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
+                                **optimiser_params)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
                                                            T_max = num_epochs)
@@ -321,10 +317,10 @@ def train_model(model,
         epoch_start_time = time.time()
         losses = []
         for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
-            optimiser.zero_grad()
             loss = model(view_1.to(device),
                          view_2.to(device))
             losses.append(loss.detach().item())
+            optimiser.zero_grad()
             loss.backward()
             optimiser.step()
             model.update_target_network()

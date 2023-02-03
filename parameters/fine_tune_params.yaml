@@ -1,5 +1,3 @@
-learning_rate: 0.005
-momentum : 0.9
 batch_size: 256
 num_epochs: 30
 print_every: 50
@@ -9,6 +7,11 @@ percent_train_to_use_as_val : 0.1
 num_classes : 10
 validate_every : 1
 freeze_encoder : False
+
+optimiser_params:
+  learning_rate : 0.005
+  momentum : 0.9
+  nesterov : True
 
 augmentation:
   resize_crop:
