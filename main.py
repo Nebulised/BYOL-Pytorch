@@ -1,4 +1,5 @@
 import argparse
+import os
 import time
 
 import mlflow
@@ -54,6 +55,10 @@ def get_args():
                         type=str,
                         default="byol_experiment",
                         help = "Name of experiemnt to save mlflow run under")
+    parser.add_argument("--param-folder-path",
+                        type = str,
+                        help = "Path to folder containing all param files",
+                        default = "parameters")
 
     parsed_args = parser.parse_args()
     # Model path must be specified when fine tuning or testing
@@ -67,8 +72,8 @@ def main():
     args = get_args()
     run_type = args.run_type
     # Loads in param files
-    model_params = get_params("parameters/model_params.yaml")
-    params = get_params(f"parameters/{run_type}_params.yaml")
+    model_params = get_params(os.path.join(args.param_folder_path, "model_params.yaml"))
+    params = get_params(os.path.join(args.param_folder_path,f"{run_type}_params.yaml"))
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
 
@@ -86,6 +91,8 @@ def main():
                         existing_key="model")
         # Vars converts namespace object to dict
         log_param_dicts(param_dict=vars(args))
+        mlflow.log_artifact(local_path = "parameters",
+                            artifact_path = args.param_folder_path)
     else:
         mlflow_enabled = False
 
