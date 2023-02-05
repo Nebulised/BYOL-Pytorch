@@ -114,6 +114,10 @@ class BYOL(torch.nn.Module):
                                         weights=None)
         self.embedding_size = self.online_encoder.fc.in_features
         # Remove the linear output layer
+        if self.input_width < 112 or self.input_height < 112:
+            print("Replacing conv1 layer with 3x3 kerenel and removing maxpool layer")
+            self.online_encoder.conv1 = torch.nn.Conv2d(3, 64,kernel_size = 3, stride=1, padding=1, bias=False)
+            self.online_encoder.maxpool = torch.nn.Identity()
         self.online_encoder.fc = torch.nn.Identity()
 
         # Create online projection head
