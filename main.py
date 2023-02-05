@@ -307,7 +307,7 @@ def train_model(model,
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
                                                            T_max = num_epochs,
-                                                           eta_min = 0.00001)
+                                                           eta_min = 0)
 
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
