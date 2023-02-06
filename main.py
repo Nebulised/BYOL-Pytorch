@@ -72,8 +72,10 @@ def main():
     args = get_args()
     run_type = args.run_type
     # Loads in param files
-    model_params = get_params(os.path.join(args.param_folder_path, "model_params.yaml"))
-    params = get_params(os.path.join(args.param_folder_path,f"{run_type}_params.yaml"))
+    model_param_file_path = os.path.join(args.param_folder_path, "model_params.yaml")
+    run_param_file_path = os.path.join(args.param_folder_path,f"{run_type}_params.yaml")
+    model_params = get_params(model_param_file_path)
+    params = get_params(run_param_file_path)
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
 
@@ -91,8 +93,9 @@ def main():
                         existing_key="model")
         # Vars converts namespace object to dict
         log_param_dicts(param_dict=vars(args))
-        mlflow.log_artifact(local_path = "parameters",
-                            artifact_path = args.param_folder_path)
+        for path_to_param_file in (model_param_file_path, run_param_file_path):
+            mlflow.log_artifact(local_path = "parameters",
+                                artifact_path = path_to_param_file)
     else:
         mlflow_enabled = False
 
@@ -234,7 +237,7 @@ def fine_tune(model: BYOL,
     optimiser = torch.optim.SGD(model.fc.parameters(),
                                 **optimiser_params)
     lowest_val_loss = None
-
+    training_start_time = time.time()
     # Fine tuning
     for epoch_index in range(num_epochs):
         epoch_start_time = time.time()
@@ -271,7 +274,10 @@ def fine_tune(model: BYOL,
                 lowest_val_loss = validation_loss
                 if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
         metric_tracker.increment_epoch()
-        print(f"Time taken for epoch : {time.time() - epoch_start_time}")
+        epoch_elapsed_time = time.time() - epoch_start_time
+        training_elapsed_time = time.time() - training_start_time
+        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - epoch_index - 1)
+        print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
 
 def train_model(model,
                 optimiser_params,
@@ -315,7 +321,7 @@ def train_model(model,
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
                                                            T_max = num_epochs,
                                                            eta_min = 0)
-
+    training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
     for epoch_index in range(num_epochs):
@@ -342,9 +348,13 @@ def train_model(model,
 
             if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
         metric_tracker.increment_epoch()
-        print(f"Time taken for epoch : {time.time() - epoch_start_time}")
+        epoch_elapsed_time = time.time() - epoch_start_time
+        training_elapsed_time = time.time() - training_start_time
+        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - epoch_index + 1)
+        print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
 
-
+def elapsed_to_hms(elapsed_time):
+    return time.strftime('%H:%M:%S:', time.gmtime(elapsed_time))
 
 def test(model : BYOL,
          test_data_loader : torch.utils.data.DataLoader,
