@@ -1,12 +1,11 @@
 batch_size: 256
 num_epochs: 100
-checkpoint_every: 20
+checkpoint_every: 50
 use_percent_train_data : 1.0
 
 optimiser_params:
-  lr : 0.01
-  momentum : 0.9
-  nesterov : True
+  lr : 0.005
+  weight_decay : 0.0000015
 
 
 augmentation:
@@ -25,7 +24,7 @@ augmentation:
       apply_probability : 0.2
     gaussian_blur:
       apply_probability: 1.0
-      kernel_size: [11, 11]
+      kernel_size: [3, 3]
       sigma: [0.1, 2.0]
     solarize:
       apply_probability : 0.0
@@ -48,7 +47,7 @@ augmentation:
       apply_probability : 0.2
     gaussian_blur:
       apply_probability: 0.1
-      kernel_size: [11, 11]
+      kernel_size: [3, 3]
       sigma: [ 0.1, 2.0 ]
     solarize:
       apply_probability: 0.2
