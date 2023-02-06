@@ -309,7 +309,7 @@ def train_model(model,
         None
     """
 
-    optimiser = torch.optim.SGD([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
+    optimiser = torch.optim.Adam([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
                                 **optimiser_params)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
