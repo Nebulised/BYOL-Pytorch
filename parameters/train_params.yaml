@@ -4,7 +4,7 @@ checkpoint_every: 50
 use_percent_train_data : 1.0
 
 optimiser_params:
-  lr : 0.005
+  lr : 0.003
   weight_decay : 0.0000015
 
 

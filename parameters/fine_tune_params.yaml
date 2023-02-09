@@ -8,15 +8,13 @@ validate_every : 1
 freeze_encoder : True
 
 optimiser_params:
-  lr : 0.005
-  momentum : 0.9
-  nesterov : True
+  lr : 0.003
 
 augmentation:
   resize_crop:
-    apply_probability: 1.0
+    apply_probability: 0.0
   random_flip:
-    apply_probability: 0.5
+    apply_probability: 0.0
   normalise:
     mean: 0.5
     std: 0.25
