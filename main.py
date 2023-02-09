@@ -234,7 +234,7 @@ def fine_tune(model: BYOL,
     model.create_fc(num_classes=num_classes)
     model.fc.to(device)
 
-    optimiser = torch.optim.SGD(model.fc.parameters(),
+    optimiser = torch.optim.Adam(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
                                 **optimiser_params)
     lowest_val_loss = None
     training_start_time = time.time()
@@ -315,12 +315,12 @@ def train_model(model,
         None
     """
 
-    optimiser = torch.optim.Adam([*model.online_encoder.parameters(), *model.online_projection_head.parameters(), * model.online_predictor.parameters()],
+    optimiser = torch.optim.Adam(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                 **optimiser_params)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
-                                                           T_max = num_epochs,
-                                                           eta_min = 0)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
+    #                                                        T_max = num_epochs,
+    #                                                        eta_min = 0.)
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
@@ -336,9 +336,9 @@ def train_model(model,
             metric_tracker.log_metric("Train Loss", loss.item())
             metric_tracker.log_metric("Ema Tau", model.current_tau)
 
-        current_lr = scheduler.get_last_lr()[0]
-        metric_tracker.log_metric("Scheduler LR", current_lr)
-        scheduler.step()
+        # current_lr = scheduler.get_last_lr()[0]
+        # metric_tracker.log_metric("Scheduler LR", current_lr)
+        # scheduler.step()
 
 
         if (epoch_index + 1) % checkpoint_every == 0:
