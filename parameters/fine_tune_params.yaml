@@ -1,5 +1,5 @@
 batch_size: 256
-num_epochs: 80
+num_epochs: 100
 checkpoint_every: 15
 percent_data_to_use : 1.0
 percent_train_to_use_as_val : 0.1

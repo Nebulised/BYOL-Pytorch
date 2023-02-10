@@ -4,7 +4,7 @@ checkpoint_every: 50
 use_percent_train_data : 1.0
 
 optimiser_params:
-  lr : 0.003
+  lr : 0.0003
   weight_decay : 0.0000015
 
 
@@ -50,7 +50,7 @@ augmentation:
       kernel_size: [3, 3]
       sigma: [ 0.1, 2.0 ]
     solarize:
-      apply_probability: 0.2
+      apply_probability: 0.0
       threshold: 0.5
     normalise:
       mean: 0.5
