@@ -350,7 +350,7 @@ def train_model(model,
         metric_tracker.increment_epoch()
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
-        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - epoch_index + 1)
+        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
         print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
 
 def elapsed_to_hms(elapsed_time):
