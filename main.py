@@ -55,11 +55,11 @@ def get_args():
                         type=str,
                         default="byol_experiment",
                         help = "Name of experiemnt to save mlflow run under")
-    parser.add_argument("--model-param-file_path",
+    parser.add_argument("--model-param-file-path",
                         type = str,
                         help = "Path to model params yaml file",
                         default = "parameters/model_params.yaml")
-    parser.add_argument("--run-param-file_path",
+    parser.add_argument("--run-param-file-path",
                         type = str,
                         help = "Path to train/fine-tune/inference params yaml file")
     parser.add_argument("--mlflow-run-id",
