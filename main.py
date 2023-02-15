@@ -98,9 +98,9 @@ def main():
         else:
             nested = True
             run_name = "Evaluation"
-
-        mlflow.start_run(run_id=args.mlflow_run_id,
-                         nested = nested,
+        if nested:
+            mlflow.start_run(run_id=args.mlflow_run_id)
+        mlflow.start_run(nested = nested,
                          run_name = run_name)
         mlflow_enabled = True
         log_param_dicts(param_dict=params)
@@ -176,7 +176,9 @@ def main():
     elif args.run_type == "eval":
         raise NotImplementedError("Eval mode not implemented yet")
 
-    if mlflow_enabled: mlflow.end_run()
+    if mlflow_enabled:
+        mlflow.end_run()
+
 
 
 def fine_tune(model: BYOL,
