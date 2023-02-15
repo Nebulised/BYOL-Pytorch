@@ -59,6 +59,9 @@ def get_args():
                         type = str,
                         help = "Path to folder containing all param files",
                         default = "parameters")
+    parser.add_argument("--mlflow-run-id",
+                        type = str,
+                        help="Mlflow run id to either resume training or to nest run under")
 
     parsed_args = parser.parse_args()
     # Model path must be specified when fine tuning or testing
@@ -86,7 +89,18 @@ def main():
         import mlflow
         mlflow.set_tracking_uri(mlflow_tracking_uri)
         mlflow.set_experiment(args.mlflow_experiment_name)
-        mlflow.start_run()
+        if run_type == "train":
+            nested = False
+            run_name = "Self-Supervised Pre-Training"
+        elif run_type == "fine_tune":
+            nested = True
+            run_name = "Fine-Tuning"
+        else:
+            nested = True
+            run_name = "Evaluation"
+        mlflow.start_run(run_id=args.mlflow_run_id,
+                         nested = nested,
+                         run_name = run_name)
         mlflow_enabled = True
         log_param_dicts(param_dict=params)
         log_param_dicts(param_dict=model_params,
@@ -94,8 +108,8 @@ def main():
         # Vars converts namespace object to dict
         log_param_dicts(param_dict=vars(args))
         for path_to_param_file in (model_param_file_path, run_param_file_path):
-            mlflow.log_artifact(local_path = "parameters",
-                                artifact_path = path_to_param_file)
+            mlflow.log_artifact(local_path = path_to_param_file,
+                                artifact_path = "parameters")
     else:
         mlflow_enabled = False
 
