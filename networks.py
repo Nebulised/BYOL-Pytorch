@@ -63,9 +63,8 @@ class BYOL(torch.nn.Module):
     def __init__(self,
                  max_num_steps : int,
                  encoder_model: str = "resnet50",
-                 num_projection_layers: int = 1,
+                 num_projection_layers: int = 0,
                  projection_size: int = 128,
-                 num_predictor_layers: int = 1,
                  input_height: int = 224,
                  input_width: int = 224,
                  projection_hidden_layer_size: int = 128,
@@ -456,10 +455,15 @@ class MLP(torch.nn.Module):
                                              size_out=hidden_layer_size,
                                              activation="relu",
                                              batch_norm_enabled=batch_norm_enabled)
+        self.hidden_layers = [LinearLayer(size_in=hidden_layer_size,
+                                          size_out = hidden_layer_size,
+                                          activation = "relu",
+                                          batch_norm_enabled=True) for _ in range(num_hidden_layers)]
         self.output_layer = torch.nn.Linear(in_features=hidden_layer_size,
                                             out_features=size_out)
 
         self.all_layers = torch.nn.Sequential(self.full_linear_block,
+                                              *self.hidden_layers,
                                               self.output_layer)
 
     def forward(self,
@@ -474,3 +478,5 @@ class MLP(torch.nn.Module):
             torch.Tensor : MLP output
         """
         return self.all_layers(input_vector)
+
+
