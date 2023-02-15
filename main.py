@@ -58,7 +58,7 @@ def get_args():
     parser.add_argument("--model-param-file_path",
                         type = str,
                         help = "Path to model params yaml file",
-                        default = "parameters/model_params.yamls")
+                        default = "parameters/model_params.yaml")
     parser.add_argument("--run-param-file_path",
                         type = str,
                         help = "Path to train/fine-tune/inference params yaml file")
