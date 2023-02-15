@@ -37,7 +37,7 @@ def get_args():
                         type=str,
                         choices=["train", "fine-tune", "eval"],
                         required=True,
-                        help="Whether to train, fine_tune or eval")
+                        help="Whether to train, fine-tune or eval")
     parser.add_argument("--gpu",
                         type=int,
                         help="Which GPU to run on")
@@ -91,13 +91,14 @@ def main():
         mlflow.set_experiment(args.mlflow_experiment_name)
         if run_type == "train":
             nested = False
-            run_name = "Self-Supervised Pre-Training"
-        elif run_type == "fine_tune":
+            run_name = "Self-Supervised-Pre-Training"
+        elif run_type == "fine-tune":
             nested = True
             run_name = "Fine-Tuning"
         else:
             nested = True
             run_name = "Evaluation"
+
         mlflow.start_run(run_id=args.mlflow_run_id,
                          nested = nested,
                          run_name = run_name)
@@ -144,7 +145,7 @@ def main():
 
 
     # Supervised fine tuning
-    elif args.run_type == "fine_tune":
+    elif args.run_type == "fine-tune":
         test_params = get_params("parameters/test_params.yaml")
         train_dataset, val_dataset, _ = get_dataset(type=args.dataset_type,
                                                     path=args.dataset_path,
