@@ -1,7 +1,7 @@
 input_height : 32
 input_width : 32
 encoder_model: "resnet18"
-num_projection_layers: 1
+num_projection_layers: 0
 projection_size: 256
 projection_hidden_layer_size: 4096
 name: "byol_model"
