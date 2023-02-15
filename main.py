@@ -35,7 +35,7 @@ def get_args():
                         required=True)
     parser.add_argument("--run-type",
                         type=str,
-                        choices=["train", "fine_tune", "eval"],
+                        choices=["train", "fine-tune", "eval"],
                         required=True,
                         help="Whether to train, fine_tune or eval")
     parser.add_argument("--gpu",
@@ -55,10 +55,13 @@ def get_args():
                         type=str,
                         default="byol_experiment",
                         help = "Name of experiemnt to save mlflow run under")
-    parser.add_argument("--param-folder-path",
+    parser.add_argument("--model-param-file_path",
                         type = str,
-                        help = "Path to folder containing all param files",
-                        default = "parameters")
+                        help = "Path to model params yaml file",
+                        default = "parameters/model_params.yamls")
+    parser.add_argument("--run-param-file_path",
+                        type = str,
+                        help = "Path to train/fine-tune/inference params yaml file")
     parser.add_argument("--mlflow-run-id",
                         type = str,
                         help="Mlflow run id to either resume training or to nest run under")
@@ -74,11 +77,8 @@ def get_args():
 def main():
     args = get_args()
     run_type = args.run_type
-    # Loads in param files
-    model_param_file_path = os.path.join(args.param_folder_path, "model_params.yaml")
-    run_param_file_path = os.path.join(args.param_folder_path,f"{run_type}_params.yaml")
-    model_params = get_params(model_param_file_path)
-    params = get_params(run_param_file_path)
+    model_params = get_params(args.model_param_file_path)
+    params = get_params(args.run_param_file_path)
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
 
@@ -107,7 +107,7 @@ def main():
                         existing_key="model")
         # Vars converts namespace object to dict
         log_param_dicts(param_dict=vars(args))
-        for path_to_param_file in (model_param_file_path, run_param_file_path):
+        for path_to_param_file in (args.model_param_file_path, args.run_param_file_path):
             mlflow.log_artifact(local_path = path_to_param_file,
                                 artifact_path = "parameters")
     else:
