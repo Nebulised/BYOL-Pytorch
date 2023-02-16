@@ -1,7 +1,8 @@
 batch_size: 256
-num_epochs: 100
+num_epochs: 500
 checkpoint_every: 50
 use_percent_train_data : 1.0
+cosine_annealing : False
 
 optimiser_params:
   lr : 0.0003
