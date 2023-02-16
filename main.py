@@ -304,6 +304,7 @@ def train_model(model,
                 checkpoint_output_folder_path,
                 data_loader,
                 mlflow_enabled=False,
+                cosine_annealing=False,
                 **kwargs):
     """Self supervised training method
 
@@ -335,9 +336,9 @@ def train_model(model,
     optimiser = torch.optim.Adam(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                 **optimiser_params)
 
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
-    #                                                        T_max = num_epochs,
-    #                                                        eta_min = 0.)
+    if cosine_annealing : scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
+                                                                                 T_max = num_epochs,
+                                                                                 eta_min = 0.)
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
@@ -353,9 +354,10 @@ def train_model(model,
             metric_tracker.log_metric("Train Loss", loss.item())
             metric_tracker.log_metric("Ema Tau", model.current_tau)
 
-        # current_lr = scheduler.get_last_lr()[0]
-        # metric_tracker.log_metric("Scheduler LR", current_lr)
-        # scheduler.step()
+        if cosine_annealing:
+            current_lr = scheduler.get_last_lr()[0]
+            metric_tracker.log_metric("Scheduler LR", current_lr)
+            scheduler.step()
 
 
         if (epoch_index + 1) % checkpoint_every == 0:
