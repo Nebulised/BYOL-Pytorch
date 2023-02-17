@@ -246,6 +246,11 @@ def fine_tune(model: BYOL,
         for param in encoder_model.parameters():
             param.requires_grad = False
         encoder_model.eval()
+    else:
+        for layer in encoder_model.modules():
+            if isinstance(layer, torch.nn.BatchNorm2d):
+                # As per the paper
+                layer.momentum = max(1 - 10/(len(train_data_loader)), 0.9)
 
     # Setting up model classification output layer
     model.create_fc(num_classes=num_classes)
