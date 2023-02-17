@@ -1,3 +1,5 @@
+import argparse
+
 try:
     import mlflow
 except:
@@ -153,3 +155,35 @@ class TrainingTracker:
         # Only resets values to lists not keys as well as keys are assumed to be more than likely the same across epochs
         for key in self.params.keys():
             self.params[key] = []
+
+
+def update_yaml_file():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--yaml-file-path",
+                        type=str,
+                        help="Path to yaml file to change param within",
+                        required=True)
+    parser.add_argument("--param",
+                        type=str,
+                        help="Yaml file param to change. Split sub-sections via an -",
+                        required=True)
+    parser.add_argument("--new-val",
+                        type = str,
+                        required=True)
+
+    params = parser.parse_args()
+    with open(params.yaml_file_path, "r") as yaml_file:
+        file_data = yaml.safe_load(yaml_file)
+    keys = params.param.split("-")
+    new_data = file_data
+    for key in keys[:-1]:
+        new_data = new_data[key]
+
+    var_type = type(new_data[keys[-1]])
+    new_data[keys[-1]] = var_type(params.new_val)
+
+    with open(params.yaml_file_path, "w") as yaml_file:
+        yaml.safe_dump(file_data, yaml_file)
+
+
+
