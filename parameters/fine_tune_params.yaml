@@ -9,6 +9,9 @@ freeze_encoder : True
 
 optimiser_params:
   lr : 0.003
+  weight_decay : 0.000001
+  nesterov : true
+  momentum : 0.9
 
 augmentation:
   resize_crop:
