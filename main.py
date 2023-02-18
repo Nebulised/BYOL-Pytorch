@@ -119,7 +119,7 @@ def main():
                  **model_params).to(device)
     optimiser_state_dict, start_epoch = None,0
     if args.model_path is not None :
-        optimiser_state_dict, start_epoch epoch = model.load(args.model_path)
+        optimiser_state_dict, start_epoch= model.load(args.model_path)
 
     byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
                                    resize_output_width=model.input_width)
