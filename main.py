@@ -174,8 +174,6 @@ def main():
                   val_data_loader=val_data_loader,
                   mlflow_enabled=mlflow_enabled,
                   checkpoint_output_folder_path=args.model_output_folder_path,
-                  optimiser_state_dict=optimiser_state_dict,
-                  start_epoch=start_epoch,
                   **params)
 
 
@@ -199,8 +197,6 @@ def fine_tune(model: BYOL,
               checkpoint_output_folder_path: str,
               validate_every: int,
               mlflow_enabled: bool = False,
-              optimiser_state_dict=None,
-              start_epoch=0,
               **kwargs):
     """ Fine-tuning method
 
@@ -267,12 +263,11 @@ def fine_tune(model: BYOL,
     optimiser = torch.optim.SGD(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
                                 **optimiser_params)
 
-    if optimiser_state_dict is not None:
-        optimiser.load_state_dict(optimiser_state_dict)
+
     lowest_val_loss = None
     training_start_time = time.time()
     # Fine tuning
-    for epoch_index in range(start_epoch, num_epochs):
+    for epoch_index in range(num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
