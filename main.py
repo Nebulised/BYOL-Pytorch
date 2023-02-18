@@ -251,12 +251,13 @@ def fine_tune(model: BYOL,
             if isinstance(layer, torch.nn.BatchNorm2d):
                 # As per the paper
                 layer.momentum = max(1 - 10/(len(train_data_loader)), 0.9)
+        optimiser_params["weight_decay"] /= optimiser_params["lr"]
+        print(f"Dividing weight decay by ther learnign rate. New weight decay : {optimiser_params['weight_decay']}")
 
     # Setting up model classification output layer
     model.create_fc(num_classes=num_classes)
     model.fc.to(device)
-
-    optimiser = torch.optim.Adam(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
+    optimiser = torch.optim.SGD(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
                                 **optimiser_params)
     lowest_val_loss = None
     training_start_time = time.time()
