@@ -255,7 +255,7 @@ def fine_tune(model: BYOL,
                 # As per the paper
                 layer.momentum = max(1 - 10/(len(train_data_loader)), 0.9)
         optimiser_params["weight_decay"] /= optimiser_params["lr"]
-        print(f"Dividing weight decay by ther learnign rate. New weight decay : {optimiser_params['weight_decay']}")
+        print(f"Dividing weight decay by ther learning rate. New weight decay : {optimiser_params['weight_decay']}")
 
     # Setting up model classification output layer
     model.create_fc(num_classes=num_classes)
