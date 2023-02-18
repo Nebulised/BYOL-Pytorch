@@ -117,7 +117,9 @@ def main():
     print(f"Running on device : {device}")
     model = BYOL(max_num_steps=None,
                  **model_params).to(device)
-    if args.model_path is not None : model.load(args.model_path)
+    optimiser_state_dict, start_epoch = None,0
+    if args.model_path is not None :
+        optimiser_state_dict, start_epoch epoch = model.load(args.model_path)
 
     byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
                                    resize_output_width=model.input_width)
@@ -140,6 +142,8 @@ def main():
                     device=device,
                     checkpoint_output_folder_path=args.model_output_folder_path,
                     data_loader=data_loader,
+                    optimiser_state_dict=optimiser_state_dict,
+                    start_epoch=start_epoch,
                     **params)
 
 
@@ -170,6 +174,8 @@ def main():
                   val_data_loader=val_data_loader,
                   mlflow_enabled=mlflow_enabled,
                   checkpoint_output_folder_path=args.model_output_folder_path,
+                  optimiser_state_dict=optimiser_state_dict,
+                  start_epoch=start_epoch,
                   **params)
 
 
@@ -193,6 +199,8 @@ def fine_tune(model: BYOL,
               checkpoint_output_folder_path: str,
               validate_every: int,
               mlflow_enabled: bool = False,
+              optimiser_state_dict=None,
+              start_epoch=0,
               **kwargs):
     """ Fine-tuning method
 
@@ -234,7 +242,6 @@ def fine_tune(model: BYOL,
     Returns:
         None
     """
-    freeze_encoder = freeze_encoder
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
     num_classes = num_classes
@@ -259,10 +266,13 @@ def fine_tune(model: BYOL,
     model.fc.to(device)
     optimiser = torch.optim.SGD(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
                                 **optimiser_params)
+
+    if optimiser_state_dict is not None:
+        optimiser.load_state_dict(optimiser_state_dict)
     lowest_val_loss = None
     training_start_time = time.time()
     # Fine tuning
-    for epoch_index in range(num_epochs):
+    for epoch_index in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
@@ -311,6 +321,8 @@ def train_model(model,
                 data_loader,
                 mlflow_enabled=False,
                 cosine_annealing=False,
+                optimiser_state_dict=None,
+                start_epoch=0,
                 **kwargs):
     """Self supervised training method
 
@@ -341,6 +353,8 @@ def train_model(model,
 
     optimiser = torch.optim.Adam(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                 **optimiser_params)
+    if optimiser_state_dict is not None:
+        optimiser.load_state_dict(optimiser_state_dict)
 
     if cosine_annealing : scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
                                                                                  T_max = num_epochs,
@@ -348,7 +362,7 @@ def train_model(model,
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
-    for epoch_index in range(num_epochs):
+    for epoch_index in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
             loss = model(view_1.to(device),

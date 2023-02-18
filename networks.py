@@ -268,7 +268,7 @@ class BYOL(torch.nn.Module):
         self.current_step = checkpoint["current_step"]
         self.base_tau = checkpoint["base_tau"]
         self.fc = checkpoint["fc"]
-        return checkpoint["optimiser_state_dict"]
+        return checkpoint["optimiser_state_dict"], checkpoint["epoch"]
 
     def create_fc(self,
                   num_classes):
