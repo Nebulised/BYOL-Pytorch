@@ -352,7 +352,7 @@ def train_model(model,
 
     optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                        weight_decay_filter=exclude_bias_batch_norm,
-                                       lars_adaption_filter=exclude_bias_batch_norm,
+                                       lars_adaptation_filter =exclude_bias_batch_norm,
                                        **optimiser_params)
     if optimiser_state_dict is not None:
         optimiser.load_state_dict(optimiser_state_dict)
