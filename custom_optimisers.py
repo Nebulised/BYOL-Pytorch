@@ -11,13 +11,13 @@ class Lars(torch.optim.Optimizer):
                  momentum: float = 0.9,
                  eta: float = 0.001,
                  weight_decay_filter=None,
-                 lars_adaption_filter=None):
+                 lars_adaptation_filter=None):
+        self._weight_decay_filter = weight_decay_filter
+        self._lars_adaptation_filter = lars_adaptation_filter
         defaults = dict(lr=lr,
                         momentum=momentum,
                         weight_decay=weight_decay,
                         eta=eta,
-                        weight_decay_filter=weight_decay_filter,
-                        lars_adaption_filter=lars_adaption_filter,
                         nesterov=nesterov)
         super().__init__(params,
                          defaults)
@@ -35,11 +35,11 @@ class Lars(torch.optim.Optimizer):
                     continue
                 self._add_weight_decay(param=param,
                                        weight_decay=group["weight_decay"],
-                                       weight_decay_filter=None)
+                                       weight_decay_filter=self._weight_decay_filter)
                 self._scale_by_lars(param=param,
                                     momentum=group["momentum"],
                                     eta=group["eta"],
-                                    filter_fn=None,
+                                    filter_fn=self._lars_adaptation_filter,
                                     nesterov=group["nesterov"])
                 param.data.add_(param.grad,
                                 alpha=-group["lr"])
