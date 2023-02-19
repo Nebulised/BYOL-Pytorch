@@ -205,14 +205,15 @@ class CosineAnnealingLRWithWarmup:
                                                                   total_iters=warmup_epochs,
                                                                   last_epoch=last_epoch,
                                                                   verbose=verbose)
-        self.cosine_annealing_lr = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
-                                                                              T_max=num_epochs_total - warmup_epochs,
-                                                                              eta_min=cosine_eta_min)
+        self.cosine_annealing_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
+                                                                                     T_max=num_epochs_total - warmup_epochs,
+                                                                                     eta_min=cosine_eta_min,
+                                                                                     last_epoch = last_epoch)
         self.epoch = 0 if last_epoch < 0 else last_epoch
         self._current_scheduler = self._set_current_scheduler(epoch=self.epoch)
 
-    def _set_current_scheduler(self, epoch):
-        return self.warmup_scheduler if epoch < self.warmup_epochs else self.cosine_annealing_lr
+    def _update_current_scheduler(self):
+        self._current_scheduler =  self.warmup_scheduler if self.epoch < self.warmup_epochs else self.cosine_annealing_scheduler
 
     def get_last_lr(self):
         return self._current_scheduler.get_last_lr()
@@ -224,9 +225,10 @@ class CosineAnnealingLRWithWarmup:
                                          epoch=epoch)
 
     def step(self):
-        self._set_current_scheduler(epoch=self.epoch)
+        self._update_current_scheduler()
         self._current_scheduler.step()
         self.epoch += 1
+
     def state_dict(self):
         raise NotImplementedError()
 
