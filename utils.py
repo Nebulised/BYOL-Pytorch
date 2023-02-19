@@ -211,6 +211,7 @@ class CosineAnnealingLRWithWarmup:
                                                                                      eta_min=cosine_eta_min,
                                                                                      last_epoch = last_epoch)
         self.epoch = 0 if last_epoch < 0 else last_epoch
+        self._update_current_scheduler()
 
 
     def _update_current_scheduler(self):
