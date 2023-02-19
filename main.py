@@ -5,10 +5,11 @@ import time
 import mlflow
 import torch
 
+import custom_optimisers
 from augmentations import BYOLAugmenter
 from dataset import get_dataset, DATASET_CHOICES
 from networks import BYOL
-from utils import get_params, log_param_dicts, TrainingTracker
+from utils import get_params, log_param_dicts, TrainingTracker, CosineAnnealingLRWithWarmup
 
 
 def get_args():
@@ -316,6 +317,7 @@ def train_model(model,
                 data_loader,
                 mlflow_enabled=False,
                 cosine_annealing=False,
+                warmup_epochs=0,
                 optimiser_state_dict=None,
                 start_epoch=0,
                 **kwargs):
@@ -346,14 +348,17 @@ def train_model(model,
         None
     """
 
-    optimiser = torch.optim.Adam(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
+    optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                 **optimiser_params)
     if optimiser_state_dict is not None:
         optimiser.load_state_dict(optimiser_state_dict)
 
-    if cosine_annealing : scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer = optimiser,
-                                                                                 T_max = num_epochs,
-                                                                                 eta_min = 0.)
+    if cosine_annealing : scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
+                                                                  warmup_epochs=warmup_epochs,
+                                                                  num_epochs_total=num_epochs,
+                                                                  last_epoch=start_epoch,
+                                                                  verbose=False,
+                                                                  cosine_eta_min=0.0)
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
     metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
