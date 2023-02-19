@@ -142,9 +142,9 @@ class TrainingTracker:
         Returns:
             None
         """
-        self.current_epoch += 1
         self.display_tracked_metrics()
         if self.mlflow_enabled : self._log_metrics_to_mlflow()
+        self.current_epoch += 1
         self._reset_dict_values()
 
 
