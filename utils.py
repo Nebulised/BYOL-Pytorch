@@ -1,5 +1,7 @@
 import argparse
 
+import torch
+
 try:
     import mlflow
 except:
@@ -187,3 +189,46 @@ def update_yaml_file():
 
 
 
+class CosineAnnealingLRWithWarmup   :
+
+    def __init__(self,
+                 optimiser : torch.optim.optimizer,
+                 warmup_epochs : int,
+                 num_epochs_total : int,
+                 last_epoch : int = -1,
+                 verbose = False,
+                 cosine_eta_min : int =0.0):
+        self.warmup_epochs = warmup_epochs
+        self.warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
+                                                                  start_factor=1/warmup_epochs,
+                                                                  end_factor=1.0,
+                                                                  total_iters=warmup_epochs,
+                                                                  last_epoch=last_epoch,
+                                                                  verbose=verbose)
+        self.cosine_annealing_lr = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
+                                                                              T_max=num_epochs_total - warmup_epochs,
+                                                                              eta_min=cosine_eta_min)
+        self.epoch = 0 if last_epoch < 0 else last_epoch
+        self._current_scheduler = self._set_current_scheduler(epoch=self.epoch)
+
+    def _set_current_scheduler(self, epoch):
+        return self.warmup_scheduler if epoch < self.warmup_epochs else self.cosine_annealing_lr
+
+    def get_last_lr(self):
+        return self._current_scheduler.get_last_lr()
+
+    def print_lr(self, is_verbose : bool, group , lr : float, epoch=None):
+        self._current_scheduler.print_lr(is_verbose=is_verbose,
+                                         group=group,
+                                         lr=lr,
+                                         epoch=epoch)
+
+    def step(self):
+        self._set_current_scheduler(epoch=self.epoch)
+        self._current_scheduler.step()
+        self.epoch += 1
+    def state_dict(self):
+        raise NotImplementedError()
+
+    def load_state_dict(self):
+        raise NotImplementedError()
