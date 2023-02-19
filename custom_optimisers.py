@@ -4,7 +4,7 @@ import torch
 class Lars(torch.optim.Optimizer):
 
     def __init__(self,
-                 named_params,
+                 params,
                  lr: float,
                  nesterov: bool = True,
                  weight_decay: float = 0.0,
@@ -19,7 +19,7 @@ class Lars(torch.optim.Optimizer):
                         weight_decay_filter=weight_decay_filter,
                         lars_adaption_filter=lars_adaption_filter,
                         nesterov=nesterov)
-        super().__init__(named_params,
+        super().__init__(params,
                          defaults)
 
     @torch.no_grad()
@@ -30,35 +30,31 @@ class Lars(torch.optim.Optimizer):
             with torch.enable_grad():
                 loss = closure()
         for group in self.param_groups:
-            for param_name, param in group['params']:
+            for param in group['params']:
                 if param.grad is None:
                     continue
                 self._add_weight_decay(param=param,
                                        weight_decay=group["weight_decay"],
-                                       weight_decay_filter=None,
-                                       param_name=param_name)
+                                       weight_decay_filter=None)
                 self._scale_by_lars(param=param,
                                     momentum=group["momentum"],
                                     eta=group["eta"],
                                     filter_fn=None,
-                                    nesterov=group["nesterov"],
-                                    param_name=param_name)
+                                    nesterov=group["nesterov"])
                 param.data.add_(param.grad,
                                 alpha=-group["lr"])
         return loss
 
     def _add_weight_decay(self,
                           param,
-                          param_name,
                           weight_decay: float,
                           weight_decay_filter=None):
-        if weight_decay_filter is None or weight_decay_filter(param_name):
+        if weight_decay_filter is None or weight_decay_filter(param):
             param.grad.add_(param,
                             alpha=weight_decay)
 
     def _scale_by_lars(self,
                        param,
-                       param_name,
                        momentum: float = 0.9,
                        eta: float = 0.001,
                        filter_fn=None,
@@ -74,7 +70,7 @@ class Lars(torch.optim.Optimizer):
                                                         1.0),
                                             1.0)
 
-        if filter_fn is None or filter_fn(param_name):
+        if filter_fn is None or filter_fn(param):
             lars_adaption(param=param)
         if momentum != 0:
             state = self.state[param]
