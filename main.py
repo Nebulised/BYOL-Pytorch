@@ -347,16 +347,20 @@ def train_model(model,
     Returns:
         None
     """
+    def exclude_bias_batch_norm(param):
+        return param.ndim != 1
 
     optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
-                                **optimiser_params)
+                                       weight_decay_filter=exclude_bias_batch_norm,
+                                       lars_adaption_filter=exclude_bias_batch_norm,
+                                       **optimiser_params)
     if optimiser_state_dict is not None:
         optimiser.load_state_dict(optimiser_state_dict)
 
     if cosine_annealing : scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
                                                                   warmup_epochs=warmup_epochs,
                                                                   num_epochs_total=num_epochs,
-                                                                  last_epoch=start_epoch,
+                                                                  last_epoch=-1 if start_epoch == 0 else start_epoch,
                                                                   verbose=False,
                                                                   cosine_eta_min=0.0)
     training_start_time = time.time()
