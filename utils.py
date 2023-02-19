@@ -189,7 +189,7 @@ def update_yaml_file():
 
 
 
-class CosineAnnealingLRWithWarmup   :
+class CosineAnnealingLRWithWarmup:
 
     def __init__(self,
                  optimiser : torch.optim.optimizer,
@@ -197,7 +197,7 @@ class CosineAnnealingLRWithWarmup   :
                  num_epochs_total : int,
                  last_epoch : int = -1,
                  verbose = False,
-                 cosine_eta_min : int =0.0):
+                 cosine_eta_min : float =0.0):
         self.warmup_epochs = warmup_epochs
         self.warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
                                                                   start_factor=1/warmup_epochs,
