@@ -192,7 +192,7 @@ def update_yaml_file():
 class CosineAnnealingLRWithWarmup:
 
     def __init__(self,
-                 optimiser : torch.optim.optimizer,
+                 optimiser : torch.optim.Optimizer,
                  warmup_epochs : int,
                  num_epochs_total : int,
                  last_epoch : int = -1,
