@@ -198,6 +198,7 @@ class CosineAnnealingLRWithWarmup:
                  last_epoch : int = -1,
                  verbose = False,
                  cosine_eta_min : float =0.0):
+        self._current_scheduler = None
         self.warmup_epochs = warmup_epochs
         self.warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
                                                                   start_factor=1/warmup_epochs,
@@ -210,7 +211,7 @@ class CosineAnnealingLRWithWarmup:
                                                                                      eta_min=cosine_eta_min,
                                                                                      last_epoch = last_epoch)
         self.epoch = 0 if last_epoch < 0 else last_epoch
-        self._current_scheduler = self._set_current_scheduler(epoch=self.epoch)
+
 
     def _update_current_scheduler(self):
         self._current_scheduler =  self.warmup_scheduler if self.epoch < self.warmup_epochs else self.cosine_annealing_scheduler
