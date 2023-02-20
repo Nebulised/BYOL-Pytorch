@@ -352,8 +352,9 @@ def train_model(model,
 
     model_params = torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters()
     optimiser_type = optimiser_params["type"].lower()
+    del optimiser_params["type"]
     if optimiser_type == "adam":
-        optimier = torch.optim.Adam(params = model_params,
+        optimiser = torch.optim.Adam(params = model_params,
                                     **optimiser_params)
     elif optimiser_type == "lars":
         optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
