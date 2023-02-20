@@ -350,10 +350,18 @@ def train_model(model,
     def exclude_bias_batch_norm(param):
         return param.ndim != 1
 
-    optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
+    model_params = torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters()
+    optimiser_type = optimiser_params["type"].lower()
+    if optimiser_type == "adam":
+        optimier = torch.optim.Adam(params = model_params,
+                                    **optimiser_params)
+    elif optimiser_type == "lars":
+        optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
                                        weight_decay_filter=exclude_bias_batch_norm,
                                        lars_adaptation_filter =exclude_bias_batch_norm,
                                        **optimiser_params)
+    else:
+        raise Exception(f"Unexpected optimiser type : {optimiser_type}")
     if optimiser_state_dict is not None:
         optimiser.load_state_dict(optimiser_state_dict)
 
