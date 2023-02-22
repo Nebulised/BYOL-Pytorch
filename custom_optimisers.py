@@ -6,7 +6,7 @@ class Lars(torch.optim.Optimizer):
     def __init__(self,
                  params,
                  lr: float,
-                 nesterov: bool = True,
+                 nesterov: bool = False,
                  weight_decay: float = 0.0,
                  momentum: float = 0.9,
                  eta: float = 0.001,
@@ -71,7 +71,7 @@ class Lars(torch.optim.Optimizer):
                                             1.0)
 
         if filter_fn is None or filter_fn(param):
-            lars_adaption(param=param)
+            param.grad = lars_adaption(param=param)
         if momentum != 0:
             state = self.state[param]
             if 'momentum_buffer' not in state:
