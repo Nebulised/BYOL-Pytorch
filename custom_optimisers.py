@@ -41,8 +41,8 @@ class Lars(torch.optim.Optimizer):
                                     eta=group["eta"],
                                     filter_fn=self._lars_adaptation_filter,
                                     nesterov=group["nesterov"])
-                param.data.add_(param.grad,
-                                alpha=-group["lr"])
+                param.add_(param.grad,
+                           alpha=-group["lr"])
         return loss
 
     def _add_weight_decay(self,
@@ -59,19 +59,17 @@ class Lars(torch.optim.Optimizer):
                        eta: float = 0.001,
                        filter_fn=None,
                        nesterov=True):
-        def lars_adaption(param):
+        if filter_fn is None or filter_fn(param):
             param_norm = torch.linalg.vector_norm(param,
                                                   ord=2)
             grad_norm = torch.linalg.vector_norm(param.grad,
                                                  ord=2)
-            return param.grad * torch.where(param_norm > 0.0,
-                                            torch.where(grad_norm > 0.0,
-                                                        (eta * param_norm / grad_norm),
-                                                        1.0),
-                                            1.0)
+            param.grad.mul_(torch.where(param_norm > 0.0,
+                                        torch.where(grad_norm > 0.0,
+                                                    (eta * param_norm / grad_norm),
+                                                    1.0),
+                                        1.0))
 
-        if filter_fn is None or filter_fn(param):
-            param.grad = lars_adaption(param=param)
         if momentum != 0:
             state = self.state[param]
             if 'momentum_buffer' not in state:
@@ -79,11 +77,10 @@ class Lars(torch.optim.Optimizer):
                 state["momentum_buffer"] = buf
             else:
                 buf = state["momentum_buffer"]
-                buf.mul_(momentum).add_(param.grad,
-                                        alpha=1)
+                buf.mul_(momentum).add_(param.grad)
 
             if nesterov:
-                param.grad = param.grad.add(buf,
-                                            alpha=momentum)
+                param.grad.add_(buf,
+                               alpha=momentum)
             else:
-                param.grad = buf
+                param.grad[:] = buf
