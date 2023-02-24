@@ -61,7 +61,6 @@ class BYOL(torch.nn.Module):
     """
 
     def __init__(self,
-                 max_num_steps : int,
                  encoder_model: str = "resnet50",
                  num_projection_layers: int = 0,
                  projection_size: int = 128,
@@ -73,9 +72,6 @@ class BYOL(torch.nn.Module):
         """Initialiser method for BYOL network
 
         Args:
-            max_num_steps:
-                Max number of bckprops steps
-                Used for calculation of exponential moving average tau value
             encoder_model:
                 The backbone model. E.g. "Resnet50" or "Resnet18"
             num_projection_layers:
@@ -104,7 +100,7 @@ class BYOL(torch.nn.Module):
         self.base_tau = base_ema_tau
         self.current_tau = base_ema_tau
         self.current_step = 0
-        self.max_num_steps = max_num_steps
+        self.max_num_steps = None
         self.projection_size = projection_size
         self.input_height = input_height
         self.input_width = input_width

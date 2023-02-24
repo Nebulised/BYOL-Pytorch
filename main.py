@@ -116,8 +116,7 @@ def main():
         mlflow_enabled = False
 
     print(f"Running on device : {device}")
-    model = BYOL(max_num_steps=None,
-                 **model_params).to(device)
+    model = BYOL(**model_params).to(device)
     optimiser_state_dict, start_epoch = None,0
     if args.model_path is not None :
         optimiser_state_dict, start_epoch= model.load(args.model_path)
