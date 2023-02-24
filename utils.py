@@ -5,7 +5,7 @@ import torch
 try:
     import mlflow
 except:
-    pass
+    print("Warning :  Issue importing mlflow. If you are not using mlflow ignore this")
 import yaml
 
 
@@ -36,7 +36,7 @@ def log_param_dicts(param_dict : dict,
 
     Args:
         param_dict:
-            An N-level nested dictionairy
+            An N-level nested dictionary
         existing_key:
             The prefix added onto the key for the params
 
@@ -58,15 +58,15 @@ def log_param_dicts(param_dict : dict,
 class TrainingTracker:
     """Utility class for storing metrics during training/validation
 
-    Each "step" is an epoch
+    Each "step" is an _epoch
     Has optional mlflow integration
-    Automatically displays out average for that particular epoch for all logged metrics
+    Automatically displays out average for that particular _epoch for all logged metrics
 
     Attributes:
         current_epoch :
-            The current epoch, set to 0 at initialisation. Incremented by the increment_epoch method
+            The current _epoch, set to 0 at initialisation. Incremented by the increment_epoch method
         params:
-            params dictionary containing recorded values for that epoch
+            params dictionary containing recorded values for that _epoch
             Keys are metric, value is list of logged values
         mlflow_enabled:
             bool to indicate whether metrics should be logged to mlflow
@@ -88,7 +88,7 @@ class TrainingTracker:
 
 
     def log_metric(self, metric_name : str, value : float):
-        """Method to record metric in epoch dictionary
+        """Method to record metric in _epoch dictionary
 
         Args:
             metric_name:
@@ -137,7 +137,7 @@ class TrainingTracker:
             mlflow.log_metric(param, average_value, step=self.current_epoch)
 
     def increment_epoch(self):
-        """Method to be used at end of epoch. Prints out params and resets dictionairy values.
+        """Method to be used at end of _epoch. Prints out params and resets dictionairy values.
 
         Returns:
             None
@@ -160,6 +160,14 @@ class TrainingTracker:
 
 
 def update_yaml_file():
+    """ Python method for updating yaml files. Designed to be called from a shell script/command line
+
+    Updates a single yaml parameter (--param)  within yaml file specified by --yaml-file-path to be --new-val
+
+    Returns:
+        None
+
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--yaml-file-path",
                         type=str,
@@ -190,6 +198,23 @@ def update_yaml_file():
 
 
 class CosineAnnealingLRWithWarmup:
+    """Class for combining cosine annealing learning rate with a linear warmup
+
+    Attributes:
+         _current_scheduler :
+            One of torch CosineAnnealingLR or LinearLR
+            Corresponds to current scheduler that should be used
+            In case current_epoch < num warmup epochs
+                Set to linearLR
+            Else
+                set to CosineAnnealingLR
+        _warmup_epochs :
+            The number of epochs to warm up the learning rate linearly over
+        _warmup_scheduler :
+            The pytorch LinearLR scheduler to perform linear warm up using
+        _epoch :
+            Current epoch. Determined by last_epoch
+    """
 
     def __init__(self,
                  optimiser : torch.optim.Optimizer,
@@ -199,37 +224,65 @@ class CosineAnnealingLRWithWarmup:
                  verbose = False,
                  cosine_eta_min : float =0.0):
         self._current_scheduler = None
-        self.warmup_epochs = warmup_epochs
-        self.warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
-                                                                  start_factor=1/warmup_epochs,
-                                                                  end_factor=1.0,
-                                                                  total_iters=warmup_epochs,
-                                                                  last_epoch=last_epoch,
-                                                                  verbose=verbose)
-        self.cosine_annealing_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
-                                                                                     T_max=num_epochs_total - warmup_epochs,
-                                                                                     eta_min=cosine_eta_min,
-                                                                                     last_epoch = last_epoch)
-        self.epoch = 0 if last_epoch < 0 else last_epoch
+        self._warmup_epochs = warmup_epochs
+        self._warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
+                                                                   start_factor=1/warmup_epochs,
+                                                                   end_factor=1.0,
+                                                                   total_iters=warmup_epochs,
+                                                                   last_epoch=last_epoch,
+                                                                   verbose=verbose)
+        self._cosine_annealing_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
+                                                                                      T_max=num_epochs_total - warmup_epochs,
+                                                                                      eta_min=cosine_eta_min,
+                                                                                      last_epoch = last_epoch)
+        # Pytorch uses last_epoch -1 to determine first epoch
+        # We however will use epoch 0 to do this
+        self._epoch = 0 if last_epoch < 0 else last_epoch
         self._update_current_scheduler()
 
 
     def _update_current_scheduler(self):
-        self._current_scheduler =  self.warmup_scheduler if self.epoch < self.warmup_epochs else self.cosine_annealing_scheduler
+        """ Method to update current in-use scheduler
+
+        Returns:
+            None
+        """
+        self._current_scheduler =  self._warmup_scheduler if self._epoch < self._warmup_epochs else self._cosine_annealing_scheduler
 
     def get_last_lr(self):
+        """ Equivalent of torch scheduler get_last_lr
+
+        Returns:
+            float : schedulers last learning rate
+        """
         return self._current_scheduler.get_last_lr()
 
     def print_lr(self, is_verbose : bool, group , lr : float, epoch=None):
+        """ Equivalent of torch scheduler print lr. (Prints current learning rate)
+
+        Args:
+            is_verbose:
+            group:
+            lr:
+            epoch:
+
+        Returns:
+            None
+        """
         self._current_scheduler.print_lr(is_verbose=is_verbose,
                                          group=group,
                                          lr=lr,
                                          epoch=epoch)
 
     def step(self):
+        """ Updates currently assigned scheduler and steps that scheduler
+            Expected to be called at end of every epoch
+        Returns:
+            None
+        """
         self._update_current_scheduler()
         self._current_scheduler.step()
-        self.epoch += 1
+        self._epoch += 1
 
     def state_dict(self):
         raise NotImplementedError()
