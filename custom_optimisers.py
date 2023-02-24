@@ -12,6 +12,27 @@ class Lars(torch.optim.Optimizer):
                  eta: float = 0.001,
                  weight_decay_filter=None,
                  lars_adaptation_filter=None):
+        """ Pytorch implementation of the LARS optimiser [https://arxiv.org/pdf/1708.03888v1.pdf]
+            mimicking the Deepmind BYOL Lars Jax implementation [https://github.com/deepmind/deepmind-research/blob/master/byol/utils/optimizers.py]
+        Args:
+            params:
+                Parameters to update
+            lr:
+                The learning rate
+            nesterov:
+                Whether nesterov momentum should be used
+            weight_decay:
+                Weight decay valye
+            momentum:
+                Momentum value
+            eta:
+                LARS scaling factor
+            weight_decay_filter:
+                Optional function which take a parameter. if the function returns True weight decay will be applied
+            lars_adaptation_filter:
+                Optional function which take a parameter. if the function returns True lars adaptation will be applied
+        """
+        # Set these as class vars rather than in defaults to prevent pickling issues when saving state dict of optimiser
         self._weight_decay_filter = weight_decay_filter
         self._lars_adaptation_filter = lars_adaptation_filter
         defaults = dict(lr=lr,
@@ -83,4 +104,5 @@ class Lars(torch.optim.Optimizer):
                 param.grad.add_(buf,
                                alpha=momentum)
             else:
+                # [:] is required  to ensure it is assigned in-place
                 param.grad[:] = buf

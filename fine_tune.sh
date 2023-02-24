@@ -2,9 +2,9 @@ set -e
 MODEL_PARAM_FILE="parameters/model_params.yaml"
 FINE_TUNE_PARAM_FILE="parameters/fine_tune_params.yaml"
 
-OUTPUT_FOLDER_PATH="/media/nebulised/Archive/byol_test/"
-PATH_TO_DATASET="/media/nebulised/Archive/datasets"
-MODEL_PATH="/media/nebulised/Archive/mlflow/183961557444483021/5b7f20e7df8c40f598dcce8494a9a046/artifacts/checkpoints/byol_model_epoch=499.pt"
+OUTPUT_FOLDER_PATH=""
+PATH_TO_DATASET=""
+MODEL_PATH=""
 
 
 for weight_decay in 0.000010 0.000022 0.000046 0.000100 0.000215 0.000464 0.001000 0.0
