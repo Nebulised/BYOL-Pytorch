@@ -45,7 +45,6 @@ def get_args():
                         type=str,
                         help="path to model to load in to fine tune, test or resume training on ")
     parser.add_argument("--resume-training",
-                        type=bool,
                         action="store_true")
     parser.add_argument("--num-workers",
                         type=int,
