@@ -321,6 +321,7 @@ def setup_mlflow(run_type: str,
     else:
         nested = True
         run_name = "Evaluation"
+    nested = False if mlflow_run_id is None else nested
     if nested:
         mlflow.start_run(run_id=mlflow_run_id)
     mlflow.start_run(nested=nested,
