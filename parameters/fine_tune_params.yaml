@@ -13,13 +13,18 @@ optimiser_params:
   nesterov : true
   momentum : 0.9
 
-augmentation:
-  resize_crop:
-    apply_probability: 0.0
-  random_flip:
-    apply_probability: 0.0
-  normalise:
-    mean: 0.5
-    std: 0.25
+augmentation_params:
+  train:
+    resize_crop:
+      apply_probability: 0.0
+    random_flip:
+      apply_probability: 0.0
+    normalise:
+      mean: 0.5
+      std: 0.25
+  test:
+    normalise:
+      mean : 0.5
+      std  : 0.25
 
 

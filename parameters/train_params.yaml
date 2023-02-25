@@ -13,7 +13,7 @@ optimiser_params:
   momentum : 0.9
 
 
-augmentation:
+augmentation_params:
   view_1:
     resize_crop:
       apply_probability : 1.0
