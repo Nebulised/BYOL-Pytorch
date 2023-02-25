@@ -303,7 +303,10 @@ def fine_tune(model: BYOL,
 
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
-
+    if freeze_encoder:
+        model.online_encoder.eval()
+        for param in model.online_encoder.parameters():
+            param.requires_grad = False
     if not freeze_encoder:
         for layer in model.encoder_model.modules():
             if isinstance(layer,
