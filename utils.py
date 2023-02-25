@@ -1,15 +1,16 @@
 import argparse
+from typing import Optional
 
 import torch
+
+import custom_optimisers
+from networks import BYOL
 
 try:
     import mlflow
 except:
     print("Warning :  Issue importing mlflow. If you are not using mlflow ignore this")
 import yaml
-
-
-
 
 
 def get_params(path: str):
@@ -27,7 +28,7 @@ def get_params(path: str):
         return yaml.safe_load(yaml_file)
 
 
-def log_param_dicts(param_dict : dict,
+def log_param_dicts(param_dict: dict,
                     existing_key=None):
     """Method for logging mlflow params for dict of dicts
 
@@ -74,7 +75,7 @@ class TrainingTracker:
     """
 
     def __init__(self,
-                 mlflow_enabled : bool =False):
+                 mlflow_enabled: bool = False):
         """ Initialiser method
 
 
@@ -86,8 +87,9 @@ class TrainingTracker:
         self.current_epoch = 0
         self.mlflow_enabled = mlflow_enabled
 
-
-    def log_metric(self, metric_name : str, value : float):
+    def log_metric(self,
+                   metric_name: str,
+                   value: float):
         """Method to record metric in _epoch dictionary
 
         Args:
@@ -114,7 +116,7 @@ class TrainingTracker:
             dict :
                 dict[metric : average value recorded]
         """
-        return {param :  sum(values)/len(values) for param, values in self.params.items()}
+        return {param: sum(values) / len(values) for param, values in self.params.items()}
 
     def display_tracked_metrics(self):
         """ Prints out all recorded params in a single line human-readable foramt
@@ -122,9 +124,8 @@ class TrainingTracker:
         Returns:
             None
         """
-        output_string = " | ".join([f"{param} : {average_value}" for param,average_value in self.get_average_metrics().items()])
+        output_string = " | ".join([f"{param} : {average_value}" for param, average_value in self.get_average_metrics().items()])
         print(f"Epoch : {self.current_epoch} | {output_string}")
-
 
     def _log_metrics_to_mlflow(self):
         """Private method to log all recorded metrics to mlflow
@@ -134,7 +135,9 @@ class TrainingTracker:
 
         """
         for param, average_value in self.get_average_metrics().items():
-            mlflow.log_metric(param, average_value, step=self.current_epoch)
+            mlflow.log_metric(param,
+                              average_value,
+                              step=self.current_epoch)
 
     def increment_epoch(self):
         """Method to be used at end of _epoch. Prints out params and resets dictionairy values.
@@ -143,10 +146,9 @@ class TrainingTracker:
             None
         """
         self.display_tracked_metrics()
-        if self.mlflow_enabled : self._log_metrics_to_mlflow()
+        if self.mlflow_enabled: self._log_metrics_to_mlflow()
         self.current_epoch += 1
         self._reset_dict_values()
-
 
     def _reset_dict_values(self):
         """Private method to reset only the values of the metrics dict (self.params)
@@ -178,11 +180,12 @@ def update_yaml_file():
                         help="Yaml file param to change. Split sub-sections via an -",
                         required=True)
     parser.add_argument("--new-val",
-                        type = str,
+                        type=str,
                         required=True)
 
     params = parser.parse_args()
-    with open(params.yaml_file_path, "r") as yaml_file:
+    with open(params.yaml_file_path,
+              "r") as yaml_file:
         file_data = yaml.safe_load(yaml_file)
     keys = params.param.split("-")
     new_data = file_data
@@ -192,9 +195,10 @@ def update_yaml_file():
     var_type = type(new_data[keys[-1]])
     new_data[keys[-1]] = var_type(params.new_val)
 
-    with open(params.yaml_file_path, "w") as yaml_file:
-        yaml.safe_dump(file_data, yaml_file)
-
+    with open(params.yaml_file_path,
+              "w") as yaml_file:
+        yaml.safe_dump(file_data,
+                       yaml_file)
 
 
 class CosineAnnealingLRWithWarmup:
@@ -217,16 +221,16 @@ class CosineAnnealingLRWithWarmup:
     """
 
     def __init__(self,
-                 optimiser : torch.optim.Optimizer,
-                 warmup_epochs : int,
-                 num_epochs_total : int,
-                 last_epoch : int = -1,
-                 verbose = False,
-                 cosine_eta_min : float =0.0):
+                 optimiser: torch.optim.Optimizer,
+                 warmup_epochs: int,
+                 num_epochs_total: int,
+                 last_epoch: int = -1,
+                 verbose=False,
+                 cosine_eta_min: float = 0.0):
         self._current_scheduler = None
         self._warmup_epochs = warmup_epochs
         self._warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimiser,
-                                                                   start_factor=1/warmup_epochs,
+                                                                   start_factor=1 / warmup_epochs,
                                                                    end_factor=1.0,
                                                                    total_iters=warmup_epochs,
                                                                    last_epoch=last_epoch,
@@ -234,12 +238,11 @@ class CosineAnnealingLRWithWarmup:
         self._cosine_annealing_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser,
                                                                                       T_max=num_epochs_total - warmup_epochs,
                                                                                       eta_min=cosine_eta_min,
-                                                                                      last_epoch = last_epoch)
+                                                                                      last_epoch=last_epoch)
         # Pytorch uses last_epoch -1 to determine first epoch
         # We however will use epoch 0 to do this
         self._epoch = 0 if last_epoch < 0 else last_epoch
         self._update_current_scheduler()
-
 
     def _update_current_scheduler(self):
         """ Method to update current in-use scheduler
@@ -247,7 +250,7 @@ class CosineAnnealingLRWithWarmup:
         Returns:
             None
         """
-        self._current_scheduler =  self._warmup_scheduler if self._epoch < self._warmup_epochs else self._cosine_annealing_scheduler
+        self._current_scheduler = self._warmup_scheduler if self._epoch < self._warmup_epochs else self._cosine_annealing_scheduler
 
     def get_last_lr(self):
         """ Equivalent of torch scheduler get_last_lr
@@ -257,7 +260,11 @@ class CosineAnnealingLRWithWarmup:
         """
         return self._current_scheduler.get_last_lr()
 
-    def print_lr(self, is_verbose : bool, group , lr : float, epoch=None):
+    def print_lr(self,
+                 is_verbose: bool,
+                 group,
+                 lr: float,
+                 epoch=None):
         """ Equivalent of torch scheduler print lr. (Prints current learning rate)
 
         Args:
@@ -289,3 +296,83 @@ class CosineAnnealingLRWithWarmup:
 
     def load_state_dict(self):
         raise NotImplementedError()
+
+
+def setup_mlflow(run_type: str,
+                 mlflow_tracking_uri: str,
+                 mlflow_experiment_name: str,
+                 args: argparse.Namespace,
+                 model_params: dict,
+                 run_params: dict,
+                 model_param_file_path: str,
+                 run_param_file_path: str,
+                 mlflow_run_id: str = None,
+                 **kwargs):
+    print(f"Mlflow enabled. Tracking URI : {mlflow_tracking_uri}")
+    import mlflow
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    mlflow.set_experiment(mlflow_experiment_name)
+    if run_type == "train":
+        nested = False
+        run_name = "Self-Supervised-Pre-Training"
+    elif run_type == "fine-tune":
+        nested = True
+        run_name = "Fine-Tuning"
+    else:
+        nested = True
+        run_name = "Evaluation"
+    if nested:
+        mlflow.start_run(run_id=mlflow_run_id)
+    mlflow.start_run(nested=nested,
+                     run_name=run_name)
+    mlflow_enabled = True
+    log_param_dicts(param_dict=run_params)
+    log_param_dicts(param_dict=model_params,
+                    existing_key="model")
+    # Vars converts namespace object to dict
+    log_param_dicts(param_dict=vars(args))
+    for path_to_param_file in (model_param_file_path, run_param_file_path):
+        mlflow.log_artifact(local_path=path_to_param_file,
+                            artifact_path="parameters")
+
+
+def create_optimiser(model: BYOL,
+                     optimiser_params: dict,
+                     run_type : str,
+                     optimiser_state_dict: Optional[dict] = None,
+                     freeze_encoder = False):
+    def is_not_bias_or_batch_norm(param):
+        return param.ndim != 1
+
+    optimiser_type = optimiser_params.pop("type",
+                                          None)
+    if run_type == "train":
+        parameters = torch.nn.ModuleList([model.online_encoder,
+                                         model.online_projection_head,
+                                         model.online_predictor]).parameters()
+    elif run_type == "fine-tune":
+        if freeze_encoder:
+            parameters = model.fc.parameters()
+        else:
+            parameters = torch.nn.ModuleList([model.online_encoder, model.fc]).parameters()
+    else:
+        raise Exception(f"Received unexpected run type : {run_type}")
+
+    if optimiser_type == "adam":
+        optimiser = torch.optim.Adam(params=parameters,
+                                     **optimiser_params)
+    elif optimiser_type == "lars":
+        optimiser = custom_optimisers.Lars(parameters,
+                                           weight_decay_filter=is_not_bias_or_batch_norm,
+                                           lars_adaptation_filter=is_not_bias_or_batch_norm,
+                                           **optimiser_params)
+    elif optimiser_type == "sgd":
+        optimiser = torch.optim.SGD(params=parameters,
+                                    **optimiser_params)
+    else:
+        raise Exception(f"Unexpected optimiser type : {optimiser_type}")  #
+
+    if optimiser_state_dict is not None:
+        optimiser.load_state_dict(optimiser_state_dict)
+
+    return optimiser
