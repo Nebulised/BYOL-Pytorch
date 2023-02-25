@@ -5,11 +5,10 @@ import time
 import mlflow
 import torch
 
-import custom_optimisers
 from augmentations import BYOLAugmenter
 from dataset import get_dataset, DATASET_CHOICES
 from networks import BYOL
-from utils import get_params, log_param_dicts, TrainingTracker, CosineAnnealingLRWithWarmup
+from utils import get_params, TrainingTracker, CosineAnnealingLRWithWarmup, setup_mlflow, create_optimiser
 
 
 def get_args():
@@ -45,30 +44,33 @@ def get_args():
     parser.add_argument("--model-path",
                         type=str,
                         help="path to model to load in to fine tune, test or resume training on ")
+    parser.add_argument("--resume-training",
+                        type=bool,
+                        action="store_true")
     parser.add_argument("--num-workers",
                         type=int,
                         default=0,
                         help="Num workers for dataloaders")
     parser.add_argument("--mlflow-tracking-uri",
                         type=str,
-                        help = "Tracking URI of mlflow. If specified Mlflow is enabled")
+                        help="Tracking URI of mlflow. If specified Mlflow is enabled")
     parser.add_argument("--mlflow-experiment-name",
                         type=str,
                         default="byol_experiment",
-                        help = "Name of experiemnt to save mlflow run under")
+                        help="Name of experiemnt to save mlflow run under")
     parser.add_argument("--model-param-file-path",
-                        type = str,
-                        help = "Path to model params yaml file",
-                        default = "parameters/model_params.yaml")
+                        type=str,
+                        help="Path to model params yaml file",
+                        default="parameters/model_params.yaml")
     parser.add_argument("--run-param-file-path",
-                        type = str,
-                        help = "Path to train/fine-tune/inference params yaml file")
+                        type=str,
+                        help="Path to train/fine-tune/inference params yaml file")
     parser.add_argument("--mlflow-run-id",
-                        type = str,
+                        type=str,
                         help="Mlflow run id to either resume training or to nest run under")
 
     parsed_args = parser.parse_args()
-    # Model path must be specified when fine tuning or testing
+    # Model path must be specified when fine-tuning or testing
     if parsed_args.run_type != "train":
         assert parsed_args.model_path is not None, "The '--model-path' argument must be specified when fine-tuning, performing linear evaluation or inference"
 
@@ -79,149 +81,189 @@ def main():
     args = get_args()
     run_type = args.run_type
     model_params = get_params(args.model_param_file_path)
-    params = get_params(args.run_param_file_path)
+    run_params = get_params(args.run_param_file_path)
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
-
     ### Setting up mlflow if required
-    mlflow_tracking_uri = args.mlflow_tracking_uri
-    if mlflow_tracking_uri is not None:
-        print(f"Mlflow enabled. Tracking URI : {mlflow_tracking_uri}")
-        import mlflow
-        mlflow.set_tracking_uri(mlflow_tracking_uri)
-        mlflow.set_experiment(args.mlflow_experiment_name)
-        if run_type == "train":
-            nested = False
-            run_name = "Self-Supervised-Pre-Training"
-        elif run_type == "fine-tune":
-            nested = True
-            run_name = "Fine-Tuning"
-        else:
-            nested = True
-            run_name = "Evaluation"
-        if nested:
-            mlflow.start_run(run_id=args.mlflow_run_id)
-        mlflow.start_run(nested = nested,
-                         run_name = run_name)
+    if args.mlflow_tracking_uri is not None:
         mlflow_enabled = True
-        log_param_dicts(param_dict=params)
-        log_param_dicts(param_dict=model_params,
-                        existing_key="model")
-        # Vars converts namespace object to dict
-        log_param_dicts(param_dict=vars(args))
-        for path_to_param_file in (args.model_param_file_path, args.run_param_file_path):
-            mlflow.log_artifact(local_path = path_to_param_file,
-                                artifact_path = "parameters")
+        setup_mlflow(run_type=run_type,
+                     run_params=run_params,
+                     model_params=model_params,
+                     args=args,
+                     **vars(args))
     else:
         mlflow_enabled = False
+    optimiser_params = run_params["optimiser_params"]
 
-    print(f"Running on device : {device}")
-    model = BYOL(**model_params).to(device)
-    optimiser_state_dict, start_epoch = None,0
-    if args.model_path is not None :
-        optimiser_state_dict, start_epoch= model.load(args.model_path)
+    print(f"Running on device: {device}")
+    model = BYOL(**model_params)
 
-    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
-                                   resize_output_width=model.input_width)
+    model.to(device)
+    if run_type in ("train", "fine-tune"):
+        if args.resume_training:
+            optimiser_state_dict, start_epoch = model.load(args.model_path)
+            print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
+        else:
+            optimiser_state_dict, start_epoch = None, 0
+            print("Existing optimiser state discarded, starting training from epoch 0")
+        if run_type == "fine-tune":
+            if not args.resume_training:
+                model.create_fc(run_params["num_classes"])
+                print("Not resuming training. Output linear layer created")
+            if not run_params["freeze_encoder"]:
+                optimiser_params["weight_decay"] /= optimiser_params["lr"]
+                print(f"Dividing weight decay by their learning rate. New weight decay : {optimiser_params['weight_decay']}. Check the BYOL paper for why")
 
+        metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
+        optimiser = create_optimiser(model=model,
+                                     optimiser_params=optimiser_params,
+                                     optimiser_state_dict=optimiser_state_dict,
+                                     run_type=run_type,
+                                     freeze_encoder=run_params["freeze_encoder"])
 
     ### Self-Supervised Training
     if run_type == "train":
-        byol_augmenter.setup_multi_view(view_1_params=params["augmentation"]["view_1"],
-                                        view_2_params=params["augmentation"]["view_2"])
-        dataset, _, _ = get_dataset(type=args.dataset_type,
-                                    path=args.dataset_path,
-                                    train_transform=byol_augmenter.self_supervised_pre_train_transform,
-                                    **params)
-        data_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                                  batch_size=params["batch_size"],
-                                                  shuffle=True,
-                                                  num_workers=args.num_workers)
-        train_model(model=model,
-                    mlflow_enabled=mlflow_enabled,
-                    device=device,
-                    checkpoint_output_folder_path=args.model_output_folder_path,
-                    data_loader=data_loader,
-                    optimiser_state_dict=optimiser_state_dict,
-                    start_epoch=start_epoch,
-                    **params)
+        scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
+                                                warmup_epochs=optimiser_params["warmup_epochs"],
+                                                num_epochs_total=run_params["num_epochs"],
+                                                last_epoch=-1 if start_epoch == 0 else start_epoch,
+                                                verbose=False,
+                                                cosine_eta_min=0.0) if run_params["cosine_annealing"] else None
+
+        pre_train(molde=model,
+                  optimiser=optimiser,
+                  metric_tracker=metric_tracker,
+                  start_epoch=start_epoch,
+                  scheduler=scheduler,
+                  device=device,
+                  **vars(args),
+                  **run_params)
 
 
 
     # Supervised fine tuning
     elif args.run_type == "fine-tune":
-        test_params = get_params("parameters/test_params.yaml")
-        train_dataset, val_dataset, _ = get_dataset(type=args.dataset_type,
-                                                    path=args.dataset_path,
-                                                    train_transform=byol_augmenter.get_fine_tune_augmentations(
-                                                        **params["augmentation"]),
-                                                    test_transform=byol_augmenter.get_test_augmentations(
-                                                        **test_params["augmentation"]),
-                                                    **params)
-
-        train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                        batch_size=params["batch_size"],
-                                                        shuffle=True,
-                                                        num_workers=args.num_workers)
-        val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
-                                                      batch_size=test_params["batch_size"],
-                                                      shuffle=True,
-                                                      num_workers=args.num_workers)
 
         fine_tune(model=model,
                   device=device,
-                  train_data_loader=train_data_loader,
-                  val_data_loader=val_data_loader,
-                  mlflow_enabled=mlflow_enabled,
-                  checkpoint_output_folder_path=args.model_output_folder_path,
-                  **params)
+                  metric_tracker=metric_tracker,
+                  start_epoch=start_epoch,
+                  optimiser=optimiser,
+                  **vars(args),
+                  **run_params)
 
 
     elif args.run_type == "eval":
-        raise NotImplementedError("Eval mode not implemented yet")
+        eval(model=model,
+             device=device,
+             **vars(args),
+             **run_params)
 
     if mlflow_enabled:
         mlflow.end_run()
 
 
+def eval(model: BYOL,
+         dataset_type: str,
+         dataset_path: str,
+         augmentation_params: dict,
+         num_workers: int,
+         device: torch.device,
+         mlflow_enabled: bool = False,
+         **kwargs):
+    """
+    Args:
+        device:
+            Device to put data on to
+        augmentation_params:
+            Augmentation parameters. A dict containing the "test" key
+        num_workers:
+            Num workers for data loader
+        model:
+            model. Should be pre-loaded
+        dataset_type:
+            Dataset type to perform evaluatin on
+        dataset_path:
+            Path to src folder on dataset
+        mlflow_enabled:
+            Whether to enable mlflow integration
+
+    Returns:
+        None
+    """
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
+                                   resize_output_width=model.input_width)
+
+    _, _, test_dataset = get_dataset(type=dataset_type,
+                                     path=dataset_path,
+                                     test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]))
+    test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                                   batch_size=1,
+                                                   shuffle=False,
+                                                   num_workers=num_workers)
+    average_loss, accuracy = test(model=model,
+                                  test_data_loader=test_data_loader,
+                                  device=device)
+    print(f"Average loss : {average_loss} | Test accuracy : {accuracy}")
+    if mlflow_enabled:
+        mlflow.log_metric("Average loss",
+                          value=average_loss)
+        mlflow.log_metric("Accuracy",
+                          value=accuracy)
+
 
 def fine_tune(model: BYOL,
-              device: torch.device,
-              train_data_loader: torch.utils.data.DataLoader,
-              val_data_loader: torch.utils.data.DataLoader,
-              freeze_encoder: bool,
-              num_classes: int,
-              optimiser_params : dict,
+              optimiser: torch.optim.Optimizer,
               num_epochs: int,
+              device: torch.device,
               checkpoint_every: int,
               checkpoint_output_folder_path: str,
+              dataset_type: str,
+              dataset_path: str,
+              freeze_encoder: bool,
+              augmentation_params: dict,
+              num_workers: int,
+              metric_tracker: TrainingTracker,
+              batch_size: int,
+              percent_train_to_use_as_val: float,
+              percent_data_to_use: float,
               validate_every: int,
+              start_epoch: int = 0,
               mlflow_enabled: bool = False,
               **kwargs):
     """ Fine-tuning method
 
     Args:
+        start_epoch:
+            Epoch to start training from. If resuming training this shoul be non zero
+        percent_data_to_use:
+            Amount of total data to use for training/validation as a float(0.0 - 1.0) representing a percentage
+        percent_train_to_use_as_val:
+            Amount of training data to use as validation data as a float(0.0 - 1.0) representing a percentage if no validation data available
+        batch_size:
+            Batch size for training
+        metric_tracker:
+            TrainingTracker object to record and display current training info
+        num_workers:
+            Num workers per dataloader
+        augmentation_params:
+            Parameters for augmentation.
+            Should contain a "train"  and "test" key corresponding to the appropriate augmentation details
+        dataset_path:
+            Path to src folder of dataset
+        dataset_type:
+            Type of dataset
+        optimiser:
+            Pytorch optimiser
         model:
             Model to train, model must already be loaded
         device:
             Device to put model/data on to
-        train_data_loader:
-            Data loader for training dataset
-            Must return a batch of images
-        val_data_loader:
-            Data loader for validation dataset
-            Must return a batch of images
         freeze_encoder:
             Whether to freeze the encoder section
-            If True : Equivalent to linear evaluatin
+            If True : Equivalent to linear evaluation
             If False : Equivalent to logistic regression
-        num_classes:
-            Num different classes of labels
-            Corresponds to output size of inference model
-        learning_rate:
-            Learning rate for optimiser
-        momentum:
-            Momentum for sgd optimiser
         num_epochs:
             Num epochs to fine tune for
         checkpoint_every:
@@ -238,36 +280,42 @@ def fine_tune(model: BYOL,
     Returns:
         None
     """
+
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
+                                   resize_output_width=model.input_width)
+
+    train_dataset, val_dataset, _ = get_dataset(type=dataset_type,
+                                                path=dataset_path,
+                                                train_transform=byol_augmenter.get_fine_tune_augmentations(**augmentation_params["train"]),
+                                                test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
+                                                percent_data_to_use=percent_data_to_use,
+                                                percent_train_to_use_as_val=percent_train_to_use_as_val)
+
+    train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                    batch_size=batch_size,
+                                                    shuffle=True,
+                                                    num_workers=num_workers)
+    val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
+                                                  batch_size=batch_size,
+                                                  shuffle=True,
+                                                  num_workers=num_workers)
+
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
-    num_classes = num_classes
-    metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
 
-    ### Setting up model
-    encoder_model = model.online_encoder.to(device)
-    if freeze_encoder:
-        for param in encoder_model.parameters():
-            param.requires_grad = False
-        encoder_model.eval()
-    else:
-        for layer in encoder_model.modules():
-            if isinstance(layer, torch.nn.BatchNorm2d):
+    if not freeze_encoder:
+        for layer in model.encoder_model.modules():
+            if isinstance(layer,
+                          torch.nn.BatchNorm2d):
                 # As per the paper
-                layer.momentum = max(1 - 10/(len(train_data_loader)), 0.9)
-        optimiser_params["weight_decay"] /= optimiser_params["lr"]
-        print(f"Dividing weight decay by ther learning rate. New weight decay : {optimiser_params['weight_decay']}")
-
-    # Setting up model classification output layer
-    model.create_fc(num_classes=num_classes)
-    model.fc.to(device)
-    optimiser = torch.optim.SGD(model.fc.parameters() if freeze_encoder else torch.nn.Sequential(encoder_model, model.fc).parameters(),
-                                **optimiser_params)
-
+                layer.momentum = max(1 - 10 / (len(train_data_loader)),
+                                     0.9)
 
     lowest_val_loss = None
     training_start_time = time.time()
     # Fine tuning
-    for epoch_index in range(num_epochs):
+    for epoch_index in range(start_epoch,
+                             num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, (images, labels) in enumerate(train_data_loader):
             images, labels = images.to(device), labels.to(device)
@@ -277,56 +325,85 @@ def fine_tune(model: BYOL,
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            metric_tracker.log_metric("Train Loss", loss.item())
+            metric_tracker.log_metric("Train Loss",
+                                      loss.item())
 
         if (epoch_index + 1) % checkpoint_every == 0:
             saved_model_path = model.save(checkpoint_output_folder_path,
-                                          optimiser = optimiser,
-                                          epoch = epoch_index)
-            if mlflow_enabled : mlflow.log_artifact(saved_model_path,"checkpoints")
+                                          optimiser=optimiser,
+                                          epoch=epoch_index)
+            if mlflow_enabled: mlflow.log_artifact(saved_model_path,
+                                                   "checkpoints")
 
         ### Validate trained model
         if (epoch_index + 1) % validate_every == 0:
-            validation_loss, val_acc = test(model = model,
-                                            test_data_loader = val_data_loader,
-                                            device = device)
-            metric_tracker.log_metric("Validation Loss", validation_loss)
-            metric_tracker.log_metric("Validation Accuracy", val_acc)
+            validation_loss, val_acc = test(model=model,
+                                            test_data_loader=val_data_loader,
+                                            device=device)
+            metric_tracker.log_metric("Validation Loss",
+                                      validation_loss)
+            metric_tracker.log_metric("Validation Accuracy",
+                                      val_acc)
 
             ### Save lowest validation loss model
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model_save_path = model.save(folder_path = checkpoint_output_folder_path,
-                                             epoch = epoch_index,
-                                             optimiser = optimiser,
-                                             model_save_name = "byol_model_fine_tuned_lowest_val.pt")
+                model_save_path = model.save(folder_path=checkpoint_output_folder_path,
+                                             epoch=epoch_index,
+                                             optimiser=optimiser,
+                                             model_save_name="byol_model_fine_tuned_lowest_val.pt")
                 lowest_val_loss = validation_loss
-                if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
+                if mlflow_enabled: mlflow.log_artifact(model_save_path,
+                                                       "checkpoints")
         metric_tracker.increment_epoch()
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
-        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - epoch_index - 1)
+        expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
         print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
 
-def train_model(model,
-                optimiser_params,
-                num_epochs,
-                device,
-                checkpoint_every,
-                checkpoint_output_folder_path,
-                data_loader,
-                mlflow_enabled=False,
-                cosine_annealing=False,
-                warmup_epochs=0,
-                optimiser_state_dict=None,
-                start_epoch=0,
-                **kwargs):
+
+def pre_train(model: BYOL,
+              optimiser: torch.optim.Optimizer,
+              num_epochs: int,
+              device: torch.device,
+              checkpoint_every: int,
+              checkpoint_output_folder_path: int,
+              dataset_type: str,
+              dataset_path: str,
+              scheduler,
+              num_workers: int,
+              metric_tracker: TrainingTracker,
+              batch_size: int,
+              augmentation_params: dict,
+              percent_data_to_use: float,
+              start_epoch=0,
+              mlflow_enabled=False,
+              **kwargs):
     """Self supervised training method
 
     Args:
+        scheduler:
+            Learning rate scheduler. if none scheduler will not be used
+        percent_data_to_use:
+            Percentage of total training data to use
+        augmentation_params:
+            Parameters for augmentation.
+            Should contain a "view_1"  and "view_2" key corresponding to the two views appropriate augmentation details
+        batch_size:
+            Batch size for training
+        metric_tracker:
+            TrainingTracker object to record and display current training info
+        num_workers:
+            Num workers per data loader
+        dataset_path:
+            Path to src folder of dataset
+        dataset_type:
+            Type of dataset
+        optimiser:
+            Pytorch optimiser
+        start_epoch:
+            Epoch to resume training from. If resuming should be non-zero
         model:
-            Model to train, if resumin training model must already be loaded
-        learning_rate:
-            Learning rate for optimiser
+            Model to train, if resuming training model must already be loaded
         num_epochs:
             Num epochs to train for
         device:
@@ -335,9 +412,6 @@ def train_model(model,
             How often to save checkpoint models
         checkpoint_output_folder_path:
             Where to output checkpoint models to
-        data_loader:
-            Data loader for training data
-            Must return two differing augmented views of same original image
        mlflow_enabled:
             Whether to use mlflow integration
 
@@ -346,35 +420,24 @@ def train_model(model,
     Returns:
         None
     """
-    def exclude_bias_batch_norm(param):
-        return param.ndim != 1
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
+                                   resize_output_width=model.input_width)
+    byol_augmenter.setup_multi_view(view_1_params=augmentation_params["view_1"],
+                                    view_2_params=augmentation_params["view_2"])
+    dataset, _, _ = get_dataset(type=dataset_type,
+                                path=dataset_path,
+                                train_transform=byol_augmenter.self_supervised_pre_train_transform,
+                                percent_train_to_use_as_val=0.0,
+                                percent_data_to_use=percent_data_to_use)
+    data_loader = torch.utils.data.DataLoader(dataset=dataset,
+                                              batch_size=batch_size,
+                                              shuffle=True,
+                                              num_workers=num_workers)
 
-    model_params = torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters()
-    optimiser_type = optimiser_params["type"].lower()
-    del optimiser_params["type"]
-    if optimiser_type == "adam":
-        optimiser = torch.optim.Adam(params = model_params,
-                                    **optimiser_params)
-    elif optimiser_type == "lars":
-        optimiser = custom_optimisers.Lars(torch.nn.Sequential(model.online_encoder, model.online_projection_head, model.online_predictor).parameters(),
-                                       weight_decay_filter=exclude_bias_batch_norm,
-                                       lars_adaptation_filter =exclude_bias_batch_norm,
-                                       **optimiser_params)
-    else:
-        raise Exception(f"Unexpected optimiser type : {optimiser_type}")
-    if optimiser_state_dict is not None:
-        optimiser.load_state_dict(optimiser_state_dict)
-
-    if cosine_annealing : scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
-                                                                  warmup_epochs=warmup_epochs,
-                                                                  num_epochs_total=num_epochs,
-                                                                  last_epoch=-1 if start_epoch == 0 else start_epoch,
-                                                                  verbose=False,
-                                                                  cosine_eta_min=0.0)
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
-    metric_tracker = TrainingTracker(mlflow_enabled = mlflow_enabled)
-    for epoch_index in range(start_epoch, num_epochs):
+    for epoch_index in range(start_epoch,
+                             num_epochs):
         epoch_start_time = time.time()
         for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
             loss = model(view_1.to(device),
@@ -383,33 +446,39 @@ def train_model(model,
             loss.backward()
             optimiser.step()
             model.update_target_network()
-            metric_tracker.log_metric("Train Loss", loss.item())
-            metric_tracker.log_metric("Ema Tau", model.current_tau)
+            metric_tracker.log_metric("Train Loss",
+                                      loss.item())
+            metric_tracker.log_metric("Ema Tau",
+                                      model.current_tau)
 
-        if cosine_annealing:
+        if scheduler is not None:
             current_lr = scheduler.get_last_lr()[0]
-            metric_tracker.log_metric("Scheduler LR", current_lr)
+            metric_tracker.log_metric("Scheduler LR",
+                                      current_lr)
             scheduler.step()
 
-
         if (epoch_index + 1) % checkpoint_every == 0:
-            model_save_path = model.save(folder_path = checkpoint_output_folder_path,
-                                         epoch = epoch_index,
-                                         optimiser = optimiser)
+            model_save_path = model.save(folder_path=checkpoint_output_folder_path,
+                                         epoch=epoch_index,
+                                         optimiser=optimiser)
 
-            if mlflow_enabled : mlflow.log_artifact(model_save_path, "checkpoints")
+            if mlflow_enabled: mlflow.log_artifact(model_save_path,
+                                                   "checkpoints")
         metric_tracker.increment_epoch()
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
         print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
 
-def elapsed_to_hms(elapsed_time):
-    return time.strftime('%H:%M:%S:', time.gmtime(elapsed_time))
 
-def test(model : BYOL,
-         test_data_loader : torch.utils.data.DataLoader,
-         device : torch.device):
+def elapsed_to_hms(elapsed_time):
+    return time.strftime('%H:%M:%S:',
+                         time.gmtime(elapsed_time))
+
+
+def test(model: BYOL,
+         test_data_loader: torch.utils.data.DataLoader,
+         device: torch.device):
     """Method to test/perform inference using model
 
     Args:
@@ -435,7 +504,8 @@ def test(model : BYOL,
         for images, labels in test_data_loader:
             images, labels = images.to(device), labels.to(device)
             output = model(images)
-            losses.append(loss_function(output, labels).detach().item())
+            losses.append(loss_function(output,
+                                        labels).detach().item())
             _, predicted = torch.max(output.data,
                                      1)
             total += labels.size(0)
