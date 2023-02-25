@@ -99,7 +99,7 @@ def main():
     print(f"Running on device: {device}")
     model = BYOL(**model_params)
 
-    model.to(device)
+
     if run_type in ("train", "fine-tune"):
         if args.resume_training:
             optimiser_state_dict, start_epoch = model.load(args.model_path)
@@ -124,6 +124,7 @@ def main():
                                      freeze_encoder=freeze_encoder)
 
 
+    model.to(device)
     if run_type == "train":
         scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
                                                 warmup_epochs=run_params["warmup_epochs"],
