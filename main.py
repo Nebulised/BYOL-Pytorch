@@ -51,13 +51,6 @@ def get_args():
                         type=int,
                         default=0,
                         help="Num workers for dataloaders")
-    parser.add_argument("--mlflow-tracking-uri",
-                        type=str,
-                        help="Tracking URI of mlflow. If specified Mlflow is enabled")
-    parser.add_argument("--mlflow-experiment-name",
-                        type=str,
-                        default="byol_experiment",
-                        help="Name of experiemnt to save mlflow run under")
     parser.add_argument("--model-param-file-path",
                         type=str,
                         help="Path to model params yaml file",
@@ -65,6 +58,13 @@ def get_args():
     parser.add_argument("--run-param-file-path",
                         type=str,
                         help="Path to train/fine-tune/inference params yaml file")
+    parser.add_argument("--mlflow-tracking-uri",
+                        type=str,
+                        help="Tracking URI of mlflow. If specified Mlflow is enabled")
+    parser.add_argument("--mlflow-experiment-name",
+                        type=str,
+                        default="byol_experiment",
+                        help="Name of experiemnt to save mlflow run under")
     parser.add_argument("--mlflow-run-id",
                         type=str,
                         help="Mlflow run id to either resume training or to nest run under")
