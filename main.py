@@ -88,8 +88,7 @@ def main():
     ### Setting up mlflow if required
     if args.mlflow_tracking_uri is not None:
         mlflow_enabled = True
-        setup_mlflow(run_type=run_type,
-                     run_params=run_params,
+        setup_mlflow(run_params=run_params,
                      model_params=model_params,
                      args=args,
                      **vars(args))
@@ -105,9 +104,10 @@ def main():
         if args.resume_training:
             optimiser_state_dict, start_epoch = model.load(args.model_path)
             print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
-
+        freeze_encoder = None
         if run_type == "fine-tune":
             #  If not resuming training instantiate a linear output layer
+            freeze_encoder = run_params["freeze_encoder"]
             if not args.resume_training:
                 model.create_fc(run_params["num_classes"])
                 print("Not resuming training. Output linear layer created")
@@ -116,24 +116,23 @@ def main():
                 optimiser_params["weight_decay"] /= optimiser_params["lr"]
                 print(f"Dividing weight decay by their learning rate. New weight decay : {optimiser_params['weight_decay']}. Check the BYOL paper for why")
         # All models have a metric tracker and optimiser
-
         metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
         optimiser = create_optimiser(model=model,
                                      optimiser_params=optimiser_params,
                                      optimiser_state_dict=optimiser_state_dict,
                                      run_type=run_type,
-                                     freeze_encoder=run_params["freeze_encoder"])
+                                     freeze_encoder=freeze_encoder)
 
 
     if run_type == "train":
         scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
-                                                warmup_epochs=optimiser_params["warmup_epochs"],
+                                                warmup_epochs=run_params["warmup_epochs"],
                                                 num_epochs_total=run_params["num_epochs"],
                                                 last_epoch=-1 if start_epoch == 0 else start_epoch,
                                                 verbose=False,
                                                 cosine_eta_min=0.0) if run_params["cosine_annealing"] else None
 
-        pre_train(molde=model,
+        pre_train(model=model,
                   optimiser=optimiser,
                   metric_tracker=metric_tracker,
                   start_epoch=start_epoch,
@@ -220,7 +219,7 @@ def fine_tune(model: BYOL,
               num_epochs: int,
               device: torch.device,
               checkpoint_every: int,
-              checkpoint_output_folder_path: str,
+              model_output_folder_path: str,
               dataset_type: str,
               dataset_path: str,
               freeze_encoder: bool,
@@ -270,7 +269,7 @@ def fine_tune(model: BYOL,
             Num epochs to fine tune for
         checkpoint_every:
             How often to save checkpoint models
-        checkpoint_output_folder_path:
+        model_output_folder_path:
             Where to output checkpoint models to
         validate_every:
             How often to perform validation
@@ -331,7 +330,7 @@ def fine_tune(model: BYOL,
                                       loss.item())
 
         if (epoch_index + 1) % checkpoint_every == 0:
-            saved_model_path = model.save(checkpoint_output_folder_path,
+            saved_model_path = model.save(model_output_folder_path,
                                           optimiser=optimiser,
                                           epoch=epoch_index)
             if mlflow_enabled: mlflow.log_artifact(saved_model_path,
@@ -349,7 +348,7 @@ def fine_tune(model: BYOL,
 
             ### Save lowest validation loss model
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model_save_path = model.save(folder_path=checkpoint_output_folder_path,
+                model_save_path = model.save(folder_path=model_output_folder_path,
                                              epoch=epoch_index,
                                              optimiser=optimiser,
                                              model_save_name="byol_model_fine_tuned_lowest_val.pt")
@@ -368,7 +367,7 @@ def pre_train(model: BYOL,
               num_epochs: int,
               device: torch.device,
               checkpoint_every: int,
-              checkpoint_output_folder_path: int,
+              model_output_folder_path: int,
               dataset_type: str,
               dataset_path: str,
               scheduler,
@@ -412,7 +411,7 @@ def pre_train(model: BYOL,
             Device to put model/data on to
         checkpoint_every:
             How often to save checkpoint models
-        checkpoint_output_folder_path:
+        model_output_folder_path:
             Where to output checkpoint models to
        mlflow_enabled:
             Whether to use mlflow integration
@@ -460,7 +459,7 @@ def pre_train(model: BYOL,
             scheduler.step()
 
         if (epoch_index + 1) % checkpoint_every == 0:
-            model_save_path = model.save(folder_path=checkpoint_output_folder_path,
+            model_save_path = model.save(folder_path=model_output_folder_path,
                                          epoch=epoch_index,
                                          optimiser=optimiser)
 
