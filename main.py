@@ -83,6 +83,7 @@ def main():
     model_params = get_params(args.model_param_file_path)
     run_params = get_params(args.run_param_file_path)
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
+    optimiser_state_dict, start_epoch = None, 0
 
     ### Setting up mlflow if required
     if args.mlflow_tracking_uri is not None:
@@ -104,16 +105,17 @@ def main():
         if args.resume_training:
             optimiser_state_dict, start_epoch = model.load(args.model_path)
             print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
-        else:
-            optimiser_state_dict, start_epoch = None, 0
-            print("Existing optimiser state discarded, starting training from epoch 0")
+
         if run_type == "fine-tune":
+            #  If not resuming training instantiate a linear output layer
             if not args.resume_training:
                 model.create_fc(run_params["num_classes"])
                 print("Not resuming training. Output linear layer created")
+            # If fine-tuning rather than linear eval divide the weight decay by learning rate as per the paper
             if not run_params["freeze_encoder"]:
                 optimiser_params["weight_decay"] /= optimiser_params["lr"]
                 print(f"Dividing weight decay by their learning rate. New weight decay : {optimiser_params['weight_decay']}. Check the BYOL paper for why")
+        # All models have a metric tracker and optimiser
 
         metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
         optimiser = create_optimiser(model=model,
@@ -122,7 +124,7 @@ def main():
                                      run_type=run_type,
                                      freeze_encoder=run_params["freeze_encoder"])
 
-    ### Self-Supervised Training
+
     if run_type == "train":
         scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
                                                 warmup_epochs=optimiser_params["warmup_epochs"],
