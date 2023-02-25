@@ -1,7 +1,7 @@
 batch_size: 512
 num_epochs: 300
 checkpoint_every: 100
-use_percent_train_data : 1.0
+percent_data_to_use : 1.0
 cosine_annealing : true
 warmup_epochs : 3
 
@@ -9,7 +9,7 @@ optimiser_params:
   type : lars
   lr : 0.4
   weight_decay : 0.0000015
-  nesterov : true
+  nesterov : False
   momentum : 0.9
 
 
