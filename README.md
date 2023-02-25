@@ -17,12 +17,14 @@ This repo is designed to be as close to the original tensorflow implementation a
 * Exponential Moving Average(EMA) target network
   * Base EMA Tau -> 1.0 over course of pre-training
 * Linear evaluation training
+* Fine-tuning
+  * Batch norm momentum setup
 * Supports Emnist and CIFAR-10 datasets currently 
 * Optional mlflow integration
+* Lars optimiser 
+  * Does not apply weight decay to batch norm and bias parameters
  ---
 ### Known Missing Features
-* LARS optimiser
-* Weight decay
 ---
 ### Self-Supervised Training
 Example command to  train on the CIFAR-10 dataset on GPU 0 from scratch with 8 workers per dataloader
@@ -93,7 +95,24 @@ python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --mod
      * Defaults to "byol_experiment"
    * Sets mlflow experiment name to value passed
    * If mlflow tracking-uri is not specified this arg does nothing
-
+ * --mlflow-run-id
+   * Expected type : string
+   * Optional? YES
+   * Sets mlflow run id
+   * Only to be used when fine-tuning or evaluating.
+     * Automatically nests runs in mlflow if run id specified
+ * --resume-training
+   * Expected type : None (is called without an arg)
+   * Optional? YES
+   * Used to load model from a checkpoint and to continue training from that checkpointe epoch and optimiser state
+* --model-param-file-path
+  * * Expected type : string
+  * Optional? YES
+    * Defaults to parameters/model_params.yaml
+  * Path to model params yaml file 
+* --run-param-file-path
+  * Optional? NO
+  * Path to run param file path 
 ---
 
 ### Mlflow Integration
@@ -106,11 +125,11 @@ Otherwise, this repo can be used fine without mlflow installed.
 ---
 
 ### TODO
- - [ ] Implement LARS Optimiser
+ - [X] Implement LARS Optimiser
  - [ ] Validate results on CIFAR-10 dataset
  - [X] Implement Linear evaluation fine-tuning
- - [ ] Implement logistic regression fine-tuning
- - [ ] Implement resumable training
+ - [X] Implement logistic regression fine-tuning
+ - [X] Implement resumable training
  - [X] Mlflow integration
  - [X] Docstring
  - [ ] Multi-GPU support
