@@ -83,7 +83,7 @@ def main():
     model_params = get_params(args.model_param_file_path)
     run_params = get_params(args.run_param_file_path)
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
-    optimiser_state_dict, start_epoch = None, 0
+
 
     ### Setting up mlflow if required
     if args.mlflow_tracking_uri is not None:
@@ -99,11 +99,14 @@ def main():
     print(f"Running on device: {device}")
     model = BYOL(**model_params)
 
+    if args.resume_training:
+        optimiser_state_dict, start_epoch = model.load(args.model_path)
+        print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
+    else:
+        model.load(args.model_path)
+        optimiser_state_dict, start_epoch = None, 0
 
     if run_type in ("train", "fine-tune"):
-        if args.resume_training:
-            optimiser_state_dict, start_epoch = model.load(args.model_path)
-            print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
         freeze_encoder = None
         if run_type == "fine-tune":
             #  If not resuming training instantiate a linear output layer
