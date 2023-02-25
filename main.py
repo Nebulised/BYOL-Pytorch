@@ -138,6 +138,7 @@ def main():
                   start_epoch=start_epoch,
                   scheduler=scheduler,
                   device=device,
+                  mlflow_enabled=mlflow_enabled,
                   **vars(args),
                   **run_params)
 
@@ -151,6 +152,7 @@ def main():
                   metric_tracker=metric_tracker,
                   start_epoch=start_epoch,
                   optimiser=optimiser,
+                  mlflow_enabled=mlflow_enabled,
                   **vars(args),
                   **run_params)
 
