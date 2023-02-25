@@ -57,6 +57,7 @@ def get_args():
                         default="parameters/model_params.yaml")
     parser.add_argument("--run-param-file-path",
                         type=str,
+                        required=True,
                         help="Path to train/fine-tune/inference params yaml file")
     parser.add_argument("--mlflow-tracking-uri",
                         type=str,
