@@ -103,7 +103,7 @@ def main():
         optimiser_state_dict, start_epoch = model.load(args.model_path)
         print(f"Resuming training. Existing optimiser state dict will be used.  Starting training from epoch {start_epoch}")
     else:
-        model.load(args.model_path)
+        if args.model_path is not None: model.load(args.model_path)
         optimiser_state_dict, start_epoch = None, 0
 
     if run_type in ("train", "fine-tune"):
