@@ -352,6 +352,7 @@ def create_optimiser(model: BYOL,
                                          model.online_projection_head,
                                          model.online_predictor]).parameters()
         if optimiser_type in ("adam", "sgd"):
+            print("Removing weight decay from bias and batch norm layers for pre-training")
             parameters = [{"batch_norm_bias_params" : [param for param in parameters if not is_not_bias_or_batch_norm(param)],
                           "weight_decay" : 0.0},
                           {"not_batch_norm_bias_params" : [param for param in parameters if is_not_bias_or_batch_norm(param)],
