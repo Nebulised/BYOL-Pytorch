@@ -1,9 +1,9 @@
 batch_size: 512
-num_epochs: 300
-checkpoint_every: 100
+num_epochs: 1000
+checkpoint_every: 50
 percent_data_to_use : 1.0
-cosine_annealing : true
-warmup_epochs : 3
+cosine_annealing : True
+warmup_epochs : 10
 
 optimiser_params:
   type : lars
@@ -28,15 +28,15 @@ augmentation_params:
     colour_drop:
       apply_probability : 0.2
     gaussian_blur:
-      apply_probability: 1.0
+      apply_probability: 0.0
       kernel_size: [3, 3]
       sigma: [0.1, 2.0]
     solarize:
       apply_probability : 0.0
       threshold: 0.5
     normalise:
-      mean : 0.5
-      std : 0.25
+      mean : [0.49139968, 0.48215827 ,0.44653124]
+      std : [0.24703233, 0.24348505, 0.26158768]
   view_2:
     resize_crop:
       apply_probability : 1.0
@@ -51,7 +51,7 @@ augmentation_params:
     colour_drop:
       apply_probability : 0.2
     gaussian_blur:
-      apply_probability: 0.1
+      apply_probability: 0.0
       kernel_size: [3, 3]
       sigma: [ 0.1, 2.0 ]
     solarize:
