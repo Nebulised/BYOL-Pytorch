@@ -314,7 +314,7 @@ def fine_tune(model: BYOL,
         for param in model.online_encoder.parameters():
             param.requires_grad = False
     if not freeze_encoder:
-        for layer in model.encoder_model.modules():
+        for layer in model.online_encoder.modules():
             if isinstance(layer,
                           torch.nn.BatchNorm2d):
                 # As per the paper
