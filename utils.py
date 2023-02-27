@@ -351,6 +351,13 @@ def create_optimiser(model: BYOL,
         parameters = torch.nn.ModuleList([model.online_encoder,
                                          model.online_projection_head,
                                          model.online_predictor]).parameters()
+        if optimiser_type in ("adam", "sgd"):
+            parameters = [{"batch_norm_bias_params" : [param for param in parameters if not is_not_bias_or_batch_norm(param)],
+                          "weight_decay" : 0.0},
+                          {"not_batch_norm_bias_params" : [param for param in parameters if is_not_bias_or_batch_norm(param)],
+                          "weight_decay" : optimiser_params.pop("weight_decay")}]
+
+
     elif run_type == "fine-tune":
         if freeze_encoder:
             parameters = model.fc.parameters()
