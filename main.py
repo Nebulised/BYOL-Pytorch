@@ -291,7 +291,7 @@ def fine_tune(model: BYOL,
     byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
                                    resize_output_width=model.input_width)
 
-    train_dataset, val_dataset, _ = get_dataset(type=dataset_type,
+    train_dataset, val_dataset, test_dataset = get_dataset(type=dataset_type,
                                                 path=dataset_path,
                                                 train_transform=byol_augmenter.get_fine_tune_augmentations(**augmentation_params["train"]),
                                                 test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
@@ -305,7 +305,12 @@ def fine_tune(model: BYOL,
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                                   batch_size=batch_size,
                                                   shuffle=True,
-                                                  num_workers=num_workers)
+                                                  num_workers=num_workers) if val_dataset is not None else None
+    test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                                   batch_size=1,
+                                                   shuffle=False,
+                                                   num_workers=num_workers)
+
 
     model.name = model.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
@@ -346,7 +351,7 @@ def fine_tune(model: BYOL,
                                                    "checkpoints")
 
         ### Validate trained model
-        if (epoch_index + 1) % validate_every == 0:
+        if val_dataset is not None and (epoch_index + 1) % validate_every == 0:
             validation_loss, val_acc = test(model=model,
                                             test_data_loader=val_data_loader,
                                             device=device)
@@ -369,6 +374,19 @@ def fine_tune(model: BYOL,
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
         print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
+
+    if val_dataset is not None:
+        print("Loading lowest val model for testing")
+        model.load(os.path.join(model_output_folder_path, "byol_model_fine_tuned_lowest_val.pt"))
+    average_loss, accuracy = test(model=model,
+                                  test_data_loader=test_data_loader,
+                                  device=device)
+    print(f"Test loss : {average_loss} | Test accuracy : {accuracy}")
+    if mlflow_enabled:
+        mlflow.log_metric("Test loss",
+                          value=average_loss)
+        mlflow.log_metric("Test Accuracy",
+                          value=accuracy)
 
 
 def pre_train(model: BYOL,
