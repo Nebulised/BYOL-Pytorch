@@ -1,6 +1,6 @@
 batch_size: 512
-num_epochs: 1000
-checkpoint_every: 50
+num_epochs: 500
+checkpoint_every: 250
 percent_data_to_use : 1.0
 cosine_annealing : True
 warmup_epochs : 10
