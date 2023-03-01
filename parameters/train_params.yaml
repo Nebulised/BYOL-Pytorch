@@ -6,11 +6,9 @@ cosine_annealing : True
 warmup_epochs : 10
 
 optimiser_params:
-  type : lars
-  lr : 0.4
+  type : adam
+  lr : 0.0003
   weight_decay : 0.0000015
-  nesterov : False
-  momentum : 0.9
 
 
 augmentation_params:

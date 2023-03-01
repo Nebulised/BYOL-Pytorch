@@ -1,30 +1,37 @@
-batch_size: 256
-num_epochs: 100
-checkpoint_every: 15
-percent_data_to_use : 1.0
-percent_train_to_use_as_val : 0.1
-num_classes : 10
-validate_every : 1
-freeze_encoder : True
-
-optimiser_params:
-  lr : 0.003
-  weight_decay : 0.000001
-  nesterov : true
-  momentum : 0.9
-
 augmentation_params:
-  train:
-    resize_crop:
-      apply_probability: 0.0
-    random_flip:
-      apply_probability: 0.0
-    normalise:
-      mean: 0.5
-      std: 0.25
   test:
     normalise:
-      mean : 0.5
-      std  : 0.25
-
-
+      mean:
+      - 0.49139968
+      - 0.48215827
+      - 0.44653124
+      std:
+      - 0.24703233
+      - 0.24348505
+      - 0.26158768
+  train:
+    normalise:
+      mean:
+      - 0.49139968
+      - 0.48215827
+      - 0.44653124
+      std:
+      - 0.24703233
+      - 0.24348505
+      - 0.26158768
+    random_flip:
+      apply_probability: 0.0
+    resize_crop:
+      apply_probability: 0.0
+batch_size: 256
+checkpoint_every: 50
+freeze_encoder: True
+num_classes: 10
+num_epochs: 25
+optimiser_params:
+  lr: 0.003
+  type: adam
+  weight_decay: 0.000001
+percent_data_to_use: 1.0
+percent_train_to_use_as_val: 0.0
+validate_every: 1
