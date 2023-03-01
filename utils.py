@@ -351,12 +351,12 @@ def create_optimiser(model: BYOL,
         parameters = torch.nn.ModuleList([model.online_encoder,
                                          model.online_projection_head,
                                          model.online_predictor]).parameters()
-        if optimiser_type in ("adam", "sgd"):
-            print("Removing weight decay from bias and batch norm layers for pre-training")
-            parameters = [{"params" : [param for param in parameters if not is_not_bias_or_batch_norm(param)],
-                          "weight_decay" : 0.0},
-                          {"params" : [param for param in parameters if is_not_bias_or_batch_norm(param)],
-                          "weight_decay" : optimiser_params.pop("weight_decay")}]
+        # if optimiser_type in ("adam", "sgd"):
+        #     print("Removing weight decay from bias and batch norm layers for pre-training")
+        #     parameters = [{"params" : [param for param in parameters if not is_not_bias_or_batch_norm(param)],
+        #                   "weight_decay" : 0.0},
+        #                   {"params" : [param for param in parameters if is_not_bias_or_batch_norm(param)],
+        #                   "weight_decay" : optimiser_params.pop("weight_decay")}]
 
 
     elif run_type == "fine-tune":
