@@ -326,7 +326,8 @@ def setup_mlflow(run_type: str,
         mlflow.start_run(run_id=mlflow_run_id)
     mlflow.start_run(nested=nested,
                      run_name=run_name)
-    mlflow_enabled = True
+    run = mlflow.active_run()
+    print("Mlflow RUN ID : {}".format(run.info.run_id))
     log_param_dicts(param_dict=run_params)
     log_param_dicts(param_dict=model_params,
                     existing_key="model")
