@@ -76,6 +76,8 @@ python main.py --dataset-type "cifar10" --dataset-path "/path/to/dataset/" --mod
      * emnist_mnist
      * cifar10
    * Dataset type. If training on your own dataset use the "custom" option.
+     * If using a custom dataset. Path specified must be a src folder containing "train" and "test" sub-folders.
+     * Within these sub-folders are the classes. See torchvision image folder documentation for more info 
  * --model-path
    * Expected type : string
    * Optional? NO if run-type=="train" else YES
@@ -139,4 +141,11 @@ Otherwise, this repo can be used fine without mlflow installed.
  - [X] Mlflow integration
  - [X] Docstring
  - [ ] Multi-GPU support
- - [ ] Allow use with custom dataset types 
+ - [X] Allow use with custom dataset types 
+
+---
+
+### Changelog
+* V1.0
+  * Implemented BYOL in pytorch validated against  Cifar-10 dataset
+  * Has support for emnist and cifar-10 dataset
