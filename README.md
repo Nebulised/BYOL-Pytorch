@@ -28,9 +28,9 @@ This repo is designed to be as close to the original tensorflow implementation a
 
 ---
 ### Validation Results
-| Pre-Train Optimiser | Pre-Train LR | Model Backbone | Linear Eval Optimiser | Linear Eval LR | Test Accuracy |       Path to full params       |
-|:-------------------:|:------------:|:--------------:|:---------------------:|:--------------:|:-------------:|:-------------------------------:|
-|        Adam         |    0.0003    |    Resnet18    |          SGD          |      0.1       |     0.91      | validation_experiments/cifar_10 |
+| Pre-Train Optimiser | Pre-Train LR |  Pre-Train Num Epochs  | Model Backbone | Linear Eval Optimiser | Linear Eval LR | Linear Eval Num Epochs | Test Accuracy |       Path to full params       |
+|:-------------------:|:------------:|:----------------------:|:--------------:|:---------------------:|:--------------:|:----------------------:|:-------------:|:-------------------------------:|
+|        Adam         |    0.0003    |          1000          |    Resnet18    |          SGD          |      0.1       |           25           |     0.91      | validation_experiments/cifar_10 |
 ---
 ### Self-Supervised Training
 Example command to  train on the CIFAR-10 dataset on GPU 0 from scratch with 8 workers per dataloader
