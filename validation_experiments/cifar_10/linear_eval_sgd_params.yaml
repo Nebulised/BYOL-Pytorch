@@ -1,0 +1,39 @@
+augmentation_params:
+  test:
+    normalise:
+      mean:
+      - 0.49139968
+      - 0.48215827
+      - 0.44653124
+      std:
+      - 0.24703233
+      - 0.24348505
+      - 0.26158768
+  train:
+    normalise:
+      mean:
+      - 0.49139968
+      - 0.48215827
+      - 0.44653124
+      std:
+      - 0.24703233
+      - 0.24348505
+      - 0.26158768
+    random_flip:
+      apply_probability: 0.0
+    resize_crop:
+      apply_probability: 0.0
+batch_size: 256
+checkpoint_every: 50
+freeze_encoder: True
+num_classes: 10
+num_epochs: 25
+optimiser_params:
+  lr: 0.1
+  type: sgd
+  weight_decay: 0.000001
+  momentum : 0.9
+  nesterov : False
+percent_data_to_use: 1.0
+percent_train_to_use_as_val: 0.0
+validate_every: 1

@@ -1,0 +1,62 @@
+batch_size : 512
+num_epochs: 1000
+checkpoint_every: 250
+percent_data_to_use : 1.0
+cosine_annealing : False
+warmup_epochs : 1
+
+optimiser_params:
+  type : adam
+  lr : 0.0003
+  weight_decay : 0.0000015
+
+
+augmentation_params:
+  view_1:
+    resize_crop:
+      apply_probability : 1.0
+    random_flip:
+      apply_probability : 0.5
+    colour_jitter:
+      apply_probability: 0.8
+      brightness_delta : 0.4
+      contrast_delta : 0.4
+      saturation_delta: 0.2
+      hue_delta: 0.1
+    colour_drop:
+      apply_probability : 0.2
+    gaussian_blur:
+      apply_probability: 1.0
+      kernel_size: [3, 3]
+      sigma: [0.1, 2.0]
+    solarize:
+      apply_probability : 0.0
+      threshold: 0.5
+    normalise:
+      mean : [0.49139968, 0.48215827 ,0.44653124]
+      std : [0.24703233, 0.24348505, 0.26158768]
+  view_2:
+    resize_crop:
+      apply_probability : 1.0
+    random_flip:
+      apply_probability : 0.5
+    colour_jitter:
+      apply_probability: 0.8
+      brightness_delta: 0.4
+      contrast_delta: 0.4
+      saturation_delta: 0.2
+      hue_delta: 0.1
+    colour_drop:
+      apply_probability : 0.2
+    gaussian_blur:
+      apply_probability: 0.1
+      kernel_size: [3, 3]
+      sigma: [ 0.1, 2.0 ]
+    solarize:
+      apply_probability: 0.0
+      threshold: 0.5
+    normalise:
+      mean: [ 0.49139968, 0.48215827 ,0.44653124 ]
+      std: [ 0.24703233, 0.24348505, 0.26158768 ]
+
+
