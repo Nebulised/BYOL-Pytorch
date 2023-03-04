@@ -25,6 +25,12 @@ This repo is designed to be as close to the original tensorflow implementation a
   * Does not apply weight decay to batch norm and bias parameters
  ---
 ### Known Missing Features
+
+---
+### Validation Results
+| Pre-Train Optimiser | Pre-Train LR | Model Backbone | Linear Eval Optimiser | Linear Eval LR | Test Accuracy |       Path to full params       |
+|:-------------------:|:------------:|:--------------:|:---------------------:|:--------------:|:-------------:|:-------------------------------:|
+|        Adam         |    0.0003    |    Resnet18    |          SGD          |      0.1       |     0.91      | validation_experiments/cifar_10 |
 ---
 ### Self-Supervised Training
 Example command to  train on the CIFAR-10 dataset on GPU 0 from scratch with 8 workers per dataloader
@@ -126,7 +132,7 @@ Otherwise, this repo can be used fine without mlflow installed.
 
 ### TODO
  - [X] Implement LARS Optimiser
- - [ ] Validate results on CIFAR-10 dataset
+ - [X] Validate results on CIFAR-10 dataset
  - [X] Implement Linear evaluation fine-tuning
  - [X] Implement logistic regression fine-tuning
  - [X] Implement resumable training
