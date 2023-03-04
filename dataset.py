@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torchvision
 import torchvision.datasets
@@ -67,7 +69,10 @@ def get_dataset(type : str,
 
 
     elif type == "custom":
-        raise NotImplementedError("Custom datasets are not yet supported")
+        train_dataset = torchvision.datasets.ImageFolder(root=os.path.join(path, "train"),
+                                                         transform=train_transform)
+        test_dataset = torchvision.datasets.ImageFolder(root=os.path.join(path, "test"),
+                                                        transform=test_transform)
     else:
         raise ValueError(f"Invalid dataset type. Expected one of : {DATASET_CHOICES}")
 
