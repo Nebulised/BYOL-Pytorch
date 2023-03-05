@@ -345,7 +345,7 @@ class BYOL(torch.nn.Module):
                                           target_output_2.detach()) + self.regression_loss(
             online_output_2,
             target_output_1.detach())
-        return total_loss.mean()
+        return total_loss
 
 
 class LinearLayer(torch.nn.Module):
