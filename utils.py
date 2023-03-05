@@ -349,9 +349,9 @@ def create_optimiser(model: BYOL,
     optimiser_type = optimiser_params.pop("type",
                                           None)
     if run_type == "train":
-        parameters = torch.nn.ModuleList([model.online_encoder,
-                                         model.online_projection_head,
-                                         model.online_predictor]).parameters()
+        parameters = torch.nn.ModuleList([model.module.online_encoder,
+                                         model.module.online_projection_head,
+                                         model.module.online_predictor]).parameters()
         # if optimiser_type in ("adam", "sgd"):
         #     print("Removing weight decay from bias and batch norm layers for pre-training")
         #     parameters = [{"params" : [param for param in parameters if not is_not_bias_or_batch_norm(param)],
@@ -362,9 +362,9 @@ def create_optimiser(model: BYOL,
 
     elif run_type == "fine-tune":
         if freeze_encoder:
-            parameters = model.fc.parameters()
+            parameters = model.module.fc.parameters()
         else:
-            parameters = torch.nn.ModuleList([model.online_encoder, model.fc]).parameters()
+            parameters = torch.nn.ModuleList([model.module.online_encoder, model.module.fc]).parameters()
     else:
         raise Exception(f"Received unexpected run type : {run_type}")
 
