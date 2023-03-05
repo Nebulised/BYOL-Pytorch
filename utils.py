@@ -386,3 +386,14 @@ def create_optimiser(model: BYOL,
         optimiser.load_state_dict(optimiser_state_dict)
 
     return optimiser
+
+
+class AccessibleDataParallel(torch.nn.DataParallel):
+    """
+    From https://github.com/pytorch/pytorch/issues/16885
+    """
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
