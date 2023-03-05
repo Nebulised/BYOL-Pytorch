@@ -40,6 +40,7 @@ def get_args():
                         required=True,
                         help="Whether to train, fine-tune or eval")
     parser.add_argument("--gpu",
+                        nargs='+',
                         type=int,
                         help="Which GPU to run on")
     parser.add_argument("--model-path",
@@ -83,7 +84,12 @@ def main():
     run_type = args.run_type
     model_params = get_params(args.model_param_file_path)
     run_params = get_params(args.run_param_file_path)
-    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
+    if args.gpu is not None:
+        if not torch.cuda.is_available():
+            raise ValueError("GPU has been specified but cuda is not detected by pytorch")
+        device = torch.device(f"cuda:{args.gpu[0]}")
+    else:
+        device = torch.device("cpu")
 
 
     ### Setting up mlflow if required
@@ -106,6 +112,8 @@ def main():
     else:
         if args.model_path is not None: model.load(args.model_path)
         optimiser_state_dict, start_epoch = None, 0
+    if len(args.gpu) > 1:
+        model = torch.nn.DataParallel(model, device_ids=args.gpu)
 
     if run_type in ("train", "fine-tune"):
         freeze_encoder = None
@@ -113,7 +121,7 @@ def main():
             #  If not resuming training instantiate a linear output layer
             freeze_encoder = run_params["freeze_encoder"]
             if not args.resume_training:
-                model.create_fc(run_params["num_classes"])
+                model.module.create_fc(run_params["num_classes"])
                 print("Not resuming training. Output linear layer created")
             # If fine-tuning rather than linear eval divide the weight decay by learning rate as per the paper
             if not run_params["freeze_encoder"]:
@@ -200,8 +208,8 @@ def eval(model: BYOL,
     Returns:
         None
     """
-    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
-                                   resize_output_width=model.input_width)
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.module.input_height,
+                                   resize_output_width=model.module.input_width)
 
     _, _, test_dataset = get_dataset(type=dataset_type,
                                      path=dataset_path,
@@ -289,8 +297,8 @@ def fine_tune(model: BYOL,
         None
     """
 
-    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
-                                   resize_output_width=model.input_width)
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.module.input_height,
+                                   resize_output_width=model.module.input_width)
 
     train_dataset, val_dataset, test_dataset = get_dataset(type=dataset_type,
                                                 path=dataset_path,
@@ -313,14 +321,14 @@ def fine_tune(model: BYOL,
                                                    num_workers=num_workers)
 
 
-    model.name = model.name + "_fine_tuned_"
+    model.module.name = model.module.name + "_fine_tuned_"
     loss_function = torch.nn.CrossEntropyLoss()
     if freeze_encoder:
-        model.online_encoder.eval()
-        for param in model.online_encoder.parameters():
+        model.module.online_encoder.eval()
+        for param in model.module.online_encoder.parameters():
             param.requires_grad = False
     if not freeze_encoder:
-        for layer in model.online_encoder.modules():
+        for layer in model.module.online_encoder.modules():
             if isinstance(layer,
                           torch.nn.BatchNorm2d):
                 # As per the paper
@@ -345,7 +353,7 @@ def fine_tune(model: BYOL,
                                       loss.item())
 
         if (epoch_index + 1) % checkpoint_every == 0:
-            saved_model_path = model.save(model_output_folder_path,
+            saved_model_path = model.module.save(model_output_folder_path,
                                           optimiser=optimiser,
                                           epoch=epoch_index)
             if mlflow_enabled: mlflow.log_artifact(saved_model_path,
@@ -363,7 +371,7 @@ def fine_tune(model: BYOL,
 
             ### Save lowest validation loss model
             if lowest_val_loss is None or validation_loss < lowest_val_loss:
-                model_save_path = model.save(folder_path=model_output_folder_path,
+                model_save_path = model.module.save(folder_path=model_output_folder_path,
                                              epoch=epoch_index,
                                              optimiser=optimiser,
                                              model_save_name="byol_model_fine_tuned_lowest_val.pt")
@@ -378,7 +386,7 @@ def fine_tune(model: BYOL,
 
     if val_dataset is not None:
         print("Loading lowest val model for testing")
-        model.load(os.path.join(model_output_folder_path, "byol_model_fine_tuned_lowest_val.pt"))
+        model.module.load(os.path.join(model_output_folder_path, "byol_model_fine_tuned_lowest_val.pt"))
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device)
@@ -449,8 +457,8 @@ def pre_train(model: BYOL,
     Returns:
         None
     """
-    byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
-                                   resize_output_width=model.input_width)
+    byol_augmenter = BYOLAugmenter(resize_output_height=model.module.input_height,
+                                   resize_output_width=model.module.input_width)
     byol_augmenter.setup_multi_view(view_1_params=augmentation_params["view_1"],
                                     view_2_params=augmentation_params["view_2"])
     dataset, _, _ = get_dataset(type=dataset_type,
@@ -464,7 +472,7 @@ def pre_train(model: BYOL,
                                               num_workers=num_workers)
 
     training_start_time = time.time()
-    model.set_max_num_steps(len(data_loader) * num_epochs)
+    model.module.set_max_num_steps(len(data_loader) * num_epochs)
     for epoch_index in range(start_epoch,
                              num_epochs):
         epoch_start_time = time.time()
@@ -474,11 +482,11 @@ def pre_train(model: BYOL,
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            model.update_target_network()
+            model.module.update_target_network()
             metric_tracker.log_metric("Train Loss",
                                       loss.item())
             metric_tracker.log_metric("Ema Tau",
-                                      model.current_tau)
+                                      model.module.current_tau)
 
         if scheduler is not None:
             current_lr = scheduler.get_last_lr()[0]
@@ -487,7 +495,7 @@ def pre_train(model: BYOL,
             scheduler.step()
 
         if (epoch_index + 1) % checkpoint_every == 0:
-            model_save_path = model.save(folder_path=model_output_folder_path,
+            model_save_path = model.module.save(folder_path=model_output_folder_path,
                                          epoch=epoch_index,
                                          optimiser=optimiser)
 
