@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import os
 import time
 
@@ -373,7 +374,7 @@ def fine_tune(model: BYOL,
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
-        print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
+        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}")
 
     if val_dataset is not None:
         print("Loading lowest val model for testing")
@@ -496,12 +497,11 @@ def pre_train(model: BYOL,
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
-        print(f"Time taken for epoch : {elapsed_to_hms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_hms(expected_seconds_till_completion)}")
+        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}")
 
 
-def elapsed_to_hms(elapsed_time):
-    return time.strftime('%H:%M:%S:',
-                         time.gmtime(elapsed_time))
+def elapsed_to_dhms(elapsed_time):
+    return str(datetime.timedelta(seconds=elapsed_time))
 
 
 def test(model: BYOL,
