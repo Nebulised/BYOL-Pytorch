@@ -112,8 +112,8 @@ def main():
     else:
         if args.model_path is not None: model.load(args.model_path)
         optimiser_state_dict, start_epoch = None, 0
-    if len(args.gpu) > 1:
-        model = torch.nn.DataParallel(model, device_ids=args.gpu)
+    # if len(args.gpu) > 1:
+    model = torch.nn.DataParallel(model, device_ids=args.gpu)
 
     if run_type in ("train", "fine-tune"):
         freeze_encoder = None
