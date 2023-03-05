@@ -482,7 +482,7 @@ def pre_train(model: BYOL,
         epoch_start_time = time.time()
         for minibatch_index, ((view_1, view_2), _) in enumerate(data_loader):
             loss = model(view_1.to(device),
-                         view_2.to(device))
+                         view_2.to(device)).mean()
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
