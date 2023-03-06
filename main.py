@@ -515,7 +515,8 @@ def pre_train(model: BYOL,
     print(f"Training completed. Total time taken : {elapsed_to_dhms(time.time()-training_start_time)}")
     final_model_save_path = model.save(folder_path=model_output_folder_path,
                                        epoch=num_epochs,
-                                       optimiser=optimiser)
+                                       optimiser=optimiser,
+                                       model_save_name="byol_model_final.pt")
     if mlflow_enabled: mlflow.log_artifact(final_model_save_path,
                                            "checkpoints")
 
