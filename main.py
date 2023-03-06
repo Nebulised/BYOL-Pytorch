@@ -510,7 +510,12 @@ def pre_train(model: BYOL,
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
         print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}")
-
+    print(f"Training completed. Total time taken : {elapsed_to_dhms(time.time()-training_start_time)}")
+    final_model_save_path = model.save(folder_path=model_output_folder_path,
+                                       epoch=num_epochs,
+                                       optimiser=optimiser)
+    if mlflow_enabled: mlflow.log_artifact(final_model_save_path,
+                                           "checkpoints")
 
 def elapsed_to_dhms(elapsed_time):
     return str(datetime.timedelta(seconds=elapsed_time))
