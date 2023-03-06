@@ -473,7 +473,9 @@ def pre_train(model: BYOL,
     data_loader = torch.utils.data.DataLoader(dataset=dataset,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=num_workers)
+                                              num_workers=num_workers,
+                                              pin_memory=True,
+                                              persistent_workers=True)
 
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
