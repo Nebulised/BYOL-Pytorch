@@ -126,7 +126,7 @@ def main():
             freeze_encoder = run_params["freeze_encoder"]
             if not args.resume_training:
                 model.create_fc(run_params["num_classes"])
-                print("Not resuming training. Output linear layer created", flush=true)
+                print("Not resuming training. Output linear layer created", flush=True)
             # If fine-tuning rather than linear eval divide the weight decay by learning rate as per the paper
             if not run_params["freeze_encoder"]:
                 optimiser_params["weight_decay"] /= optimiser_params["lr"]
