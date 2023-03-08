@@ -221,7 +221,8 @@ def eval(model: BYOL,
     test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                                    batch_size=1,
                                                    shuffle=False,
-                                                   num_workers=num_workers)
+                                                   num_workers=num_workers,
+                                                   persistent_workers=True)
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device)
@@ -314,15 +315,21 @@ def fine_tune(model: BYOL,
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                     batch_size=batch_size,
                                                     shuffle=True,
-                                                    num_workers=num_workers)
+                                                    num_workers=num_workers,
+                                                    persistent_workers=True,
+                                                    pin_memory=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                                   batch_size=batch_size,
                                                   shuffle=True,
-                                                  num_workers=num_workers) if val_dataset is not None else None
+                                                  num_workers=num_workers,
+                                                  persistent_workers=True,
+                                                  pin_memory=True) if val_dataset is not None else None
     test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                                    batch_size=1,
                                                    shuffle=False,
-                                                   num_workers=num_workers)
+                                                   num_workers=num_workers,
+                                                   persistent_workers=True,
+                                                   pin_memory=True)
 
 
     model.name = model.name + "_fine_tuned_"
