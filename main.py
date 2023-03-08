@@ -126,11 +126,11 @@ def main():
             freeze_encoder = run_params["freeze_encoder"]
             if not args.resume_training:
                 model.create_fc(run_params["num_classes"])
-                print("Not resuming training. Output linear layer created")
+                print("Not resuming training. Output linear layer created", flush=true)
             # If fine-tuning rather than linear eval divide the weight decay by learning rate as per the paper
             if not run_params["freeze_encoder"]:
                 optimiser_params["weight_decay"] /= optimiser_params["lr"]
-                print(f"Dividing weight decay by their learning rate. New weight decay : {optimiser_params['weight_decay']}. Check the BYOL paper for why")
+                print(f"Dividing weight decay by their learning rate. New weight decay : {optimiser_params['weight_decay']}. Check the BYOL paper for why", flush=True)
         # All models have a metric tracker and optimiser
         metric_tracker = TrainingTracker(mlflow_enabled=mlflow_enabled)
         optimiser = create_optimiser(model=model,
@@ -225,7 +225,7 @@ def eval(model: BYOL,
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device)
-    print(f"Average loss : {average_loss} | Test accuracy : {accuracy}")
+    print(f"Average loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Average loss",
                           value=average_loss)
@@ -386,15 +386,15 @@ def fine_tune(model: BYOL,
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
-        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}")
+        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}", flush=True)
 
     if val_dataset is not None:
-        print("Loading lowest val model for testing")
+        print("Loading lowest val model for testing", flush=True)
         model.load(os.path.join(model_output_folder_path, "byol_model_fine_tuned_lowest_val.pt"))
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device)
-    print(f"Test loss : {average_loss} | Test accuracy : {accuracy}")
+    print(f"Test loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Test loss",
                           value=average_loss)
@@ -511,8 +511,8 @@ def pre_train(model: BYOL,
         epoch_elapsed_time = time.time() - epoch_start_time
         training_elapsed_time = time.time() - training_start_time
         expected_seconds_till_completion = (training_elapsed_time / (epoch_index + 1)) * (num_epochs - (epoch_index + 1))
-        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}")
-    print(f"Training completed. Total time taken : {elapsed_to_dhms(time.time()-training_start_time)}")
+        print(f"Time taken for epoch : {elapsed_to_dhms(epoch_elapsed_time)} |  Estimated time till completion : {elapsed_to_dhms(expected_seconds_till_completion)}", flush=True)
+    print(f"Training completed. Total time taken : {elapsed_to_dhms(time.time()-training_start_time)}", flush=True)
     final_model_save_path = model.save(folder_path=model_output_folder_path,
                                        epoch=num_epochs,
                                        optimiser=optimiser,
@@ -559,7 +559,7 @@ def test(model: BYOL,
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
     acc = correct / total
-    print(f'Accuracy of the network on the {total} test images: {100 * acc} %')
+    print(f'Accuracy of the network on the {total} test images: {100 * acc} %', flush=True)
 
     ### Reset model to train
     model.train()
