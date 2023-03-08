@@ -475,7 +475,7 @@ def pre_train(model: BYOL,
                                               shuffle=True,
                                               num_workers=num_workers,
                                               pin_memory=True,
-                                              persistent_workers=False)
+                                              persistent_workers=True)
 
     training_start_time = time.time()
     model.set_max_num_steps(len(data_loader) * num_epochs)
