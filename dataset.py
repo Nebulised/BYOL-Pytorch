@@ -108,7 +108,7 @@ def get_dataset(type : str,
         if each_dataset is None:
             continue
         if isinstance(each_dataset, torch.utils.data.Subset):
-            targets = [each_dataset.dataset.targets[index] for index in each_dataset.indices]
+            targets = [each_dataset.dataset.dataset.targets[index] for index in each_dataset.dataset.indices] if isinstance(each_dataset.dataset, torch.utils.data.Subset) else [each_dataset.dataset.targets[index] for index in each_dataset.indices]
         else:
             targets = each_dataset.targets
         classes, number_each_class = torch.unique(torch.LongTensor(targets), return_counts=True)
