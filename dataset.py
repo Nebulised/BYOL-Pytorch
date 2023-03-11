@@ -1,5 +1,6 @@
 import os
 
+import sklearn.model_selection
 import torch
 import torchvision
 import torchvision.datasets
@@ -77,18 +78,32 @@ def get_dataset(type : str,
         raise ValueError(f"Invalid dataset type. Expected one of : {DATASET_CHOICES}")
 
     if percent_train_to_use_as_val > 0.0:
-        train_dataset, val_dataset = torch.utils.data.random_split(train_dataset,
-                                                                   [1 - percent_train_to_use_as_val,
-                                                                    percent_train_to_use_as_val])
+        train_split_indexes, val_split_indexes = sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
+                                                                                            train_size=percent_data_to_use,
+                                                                                            test_size=1-percent_data_to_use,
+                                                                                            stratify=train_dataset.targets)
+
+        new_train_dataset = torch.utils.data.Subset(train_dataset,
+                                                    train_split_indexes)
+        val_dataset = torch.utils.data.Subset(train_dataset,
+                                              val_split_indexes)
+        train_dataset = new_train_dataset
 
     if percent_data_to_use < 1.0:
-        train_dataset, _ = torch.utils.data.random_split(train_dataset,
-                                                         [percent_data_to_use, 1 - percent_data_to_use])
+        train_dataset = torch.utils.data.Subset(train_dataset,
+                                                sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
+                                                                                         train_size=percent_data_to_use,
+                                                                                         stratify=train_dataset.targets)[0])
         if val_dataset is not None:
-            val_dataset, _ = torch.utils.data.random_split(val_dataset,
-                                                           [percent_data_to_use, 1 - percent_data_to_use])
+            val_dataset, _ = torch.utils.data.Subset(val_dataset,
+                                                     sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
+                                                                                         train_size=percent_data_to_use,
+                                                                                         stratify=val_dataset.targets)[0])
             val_dataset.transform = test_transform
 
-    print(
-        f"Total number of training samples : {len(train_dataset)} | Total number of validation samples : {0 if val_dataset is None else len(val_dataset)} | Total number of test samples : {len(test_dataset)}")
+    for each_dataset, dataset_name in [(train_dataset, "Training Data"), (val_dataset, "Val Data"), (test_dataset, "Test Data")]:
+        if each_dataset is None:
+            continue
+        print(f"Total number of Samples for {dataset_name} : {len(each_dataset)} | Number of samples per class : {torch.unique(each_dataset.targets, return_counts=True)}")
+
     return train_dataset, val_dataset, test_dataset
