@@ -104,6 +104,8 @@ def get_dataset(type : str,
     for each_dataset, dataset_name in [(train_dataset, "Training Data"), (val_dataset, "Val Data"), (test_dataset, "Test Data")]:
         if each_dataset is None:
             continue
-        print(f"Total number of Samples for {dataset_name} : {len(each_dataset)} | Number of samples per class : {torch.unique(each_dataset.targets, return_counts=True)}")
+        classes, number_each_class = torch.unique(torch.LongTensor(each_dataset.targets), return_counts=True)
+        count_dict = {k : v for k,v in zip(classes.tolist(), number_each_class.tolist())}
+        print(f"Total number of Samples for {dataset_name} : {len(each_dataset)} | Number of samples per class : {count_dict}")
 
     return train_dataset, val_dataset, test_dataset
