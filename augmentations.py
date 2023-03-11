@@ -402,7 +402,7 @@ class BYOLColourJitter():
         return image
 
 
-class BYOLColourDrop(BYOLRandomApplyAug):
+class BYOLColourDrop(torchvision.transforms.RandomGrayscale):
     """Method to perform colour drop (grayscale conversion) according to the BYOL paper
 
     Attributes:
@@ -412,29 +412,12 @@ class BYOLColourDrop(BYOLRandomApplyAug):
             min float to apply augmentation
     """
     def __init__(self,
-                 apply_probability : float):
+                 apply_probability: float):
         """
 
         Args:
             apply_probability:
                 Min probability to apply grayscale conversion
         """
-        super().__init__(apply_probability)
+        super().__init__(p=apply_probability)
 
-    def __call__(self,
-                 image : PIL.Image):
-        """
-
-        Args:
-            image:
-                PIL image to be converted to 3 channel grayscale if min probability is met
-
-        Returns:
-            PIL Image :
-                Augmented 3 channel grayscale image if augment prop else 3 channel RGB image
-
-        """
-        if random.random() < self.apply_probability:
-            image = image.convert("L").convert("RGB")
-
-        return image
