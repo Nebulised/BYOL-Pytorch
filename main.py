@@ -222,7 +222,7 @@ def eval(model: BYOL,
                                                    batch_size=1,
                                                    shuffle=False,
                                                    num_workers=num_workers,
-                                                   persistent_workers=True)
+                                                   persistent_workers=False)
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device)
@@ -316,19 +316,19 @@ def fine_tune(model: BYOL,
                                                     batch_size=batch_size,
                                                     shuffle=True,
                                                     num_workers=num_workers,
-                                                    persistent_workers=True,
+                                                    persistent_workers=False,
                                                     pin_memory=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                                   batch_size=batch_size,
                                                   shuffle=True,
                                                   num_workers=num_workers,
-                                                  persistent_workers=True,
+                                                  persistent_workers=False,
                                                   pin_memory=True) if val_dataset is not None else None
     test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                                    batch_size=1,
                                                    shuffle=False,
                                                    num_workers=num_workers,
-                                                   persistent_workers=True,
+                                                   persistent_workers=False,
                                                    pin_memory=True)
 
 
