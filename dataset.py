@@ -102,7 +102,7 @@ def get_dataset(type : str,
         val_dataset = torch.utils.data.Subset(val_dataset,
                                               sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
                                                                                        train_size=percent_data_to_use,
-                                                                                       stratify=[val_dataset.dataset.targets[index] for index in val_dataset.indices],
+                                                                                       stratify=[val_dataset.dataset.dataset.targets[index] for index in val_dataset.dataset.indices],
                                                                                        random_state=42)[0])
         val_dataset.transform = test_transform
 
