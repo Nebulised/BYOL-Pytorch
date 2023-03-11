@@ -77,11 +77,18 @@ def get_dataset(type : str,
     else:
         raise ValueError(f"Invalid dataset type. Expected one of : {DATASET_CHOICES}")
 
+    if percent_data_to_use < 1.0:
+        train_dataset = torch.utils.data.Subset(train_dataset,
+                                                sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
+                                                                                         train_size=percent_data_to_use,
+                                                                                         stratify=train_dataset.targets,
+                                                                                         random_state=42)[0])
+
     if percent_train_to_use_as_val > 0.0:
         train_split_indexes, val_split_indexes = sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
                                                                                           train_size=percent_data_to_use,
                                                                                           test_size=1-percent_data_to_use,
-                                                                                          stratify=train_dataset.targets,
+                                                                                          stratify=[train_dataset.dataset.targets[index] for index in train_dataset.indices],
                                                                                           random_state=42)
 
         new_train_dataset = torch.utils.data.Subset(train_dataset,
@@ -90,19 +97,14 @@ def get_dataset(type : str,
                                               val_split_indexes)
         train_dataset = new_train_dataset
 
-    if percent_data_to_use < 1.0:
-        train_dataset = torch.utils.data.Subset(train_dataset,
-                                                sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
-                                                                                         train_size=percent_data_to_use,
-                                                                                         stratify=[train_dataset.dataset.targets[index] for index in train_dataset.indices],
-                                                                                         random_state=42)[0])
-        if val_dataset is not None:
-            val_dataset = torch.utils.data.Subset(val_dataset,
-                                                  sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
-                                                                                           train_size=percent_data_to_use,
-                                                                                           stratify=[val_dataset.dataset.targets[index] for index in val_dataset.indices],
-                                                                                           random_state=42)[0])
-            val_dataset.transform = test_transform
+
+    if percent_data_to_use < 1.0 and val_dataset is not None:
+        val_dataset = torch.utils.data.Subset(val_dataset,
+                                              sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
+                                                                                       train_size=percent_data_to_use,
+                                                                                       stratify=[val_dataset.dataset.targets[index] for index in val_dataset.indices],
+                                                                                       random_state=42)[0])
+        val_dataset.transform = test_transform
 
     for each_dataset, dataset_name in [(train_dataset, "Training Data"), (val_dataset, "Val Data"), (test_dataset, "Test Data")]:
         if each_dataset is None:
