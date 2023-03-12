@@ -88,7 +88,7 @@ def get_dataset(type : str,
         train_split_indexes, val_split_indexes = sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
                                                                                           train_size=1-percent_train_to_use_as_val,
                                                                                           test_size=percent_train_to_use_as_val,
-                                                                                          stratify=[train_dataset.dataset.targets[index] for index in train_dataset.indices])
+                                                                                          stratify=[train_dataset.dataset.targets[index] for index in train_dataset.indices] if percent_data_to_use < 1.0 else train_dataset.targets)
 
         new_train_dataset = torch.utils.data.Subset(train_dataset,
                                                     train_split_indexes)
