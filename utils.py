@@ -376,6 +376,9 @@ def create_optimiser(model: BYOL,
                                            weight_decay_filter=is_not_bias_or_batch_norm,
                                            lars_adaptation_filter=is_not_bias_or_batch_norm,
                                            **optimiser_params)
+    elif optimiser_type == "adamw":
+        optimiser = torch.optim.AdamW(params=parameters,
+                                      **optimiser_params)
     elif optimiser_type == "sgd":
         optimiser = torch.optim.SGD(params=parameters,
                                     **optimiser_params)
