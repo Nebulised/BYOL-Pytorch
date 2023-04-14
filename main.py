@@ -164,9 +164,17 @@ def main():
     # Supervised fine tuning
     elif args.run_type == "fine-tune":
 
+        scheduler = CosineAnnealingLRWithWarmup(optimiser=optimiser,
+                                                warmup_epochs=run_params["warmup_epochs"],
+                                                num_epochs_total=run_params["num_epochs"],
+                                                last_epoch=-1 if start_epoch == 0 else start_epoch,
+                                                verbose=False,
+                                                cosine_eta_min=0.0) if run_params["cosine_annealing"] else None
+
         fine_tune(model=model,
                   device=device,
                   metric_tracker=metric_tracker,
+                  scheduler=scheduler,
                   start_epoch=start_epoch,
                   optimiser=optimiser,
                   mlflow_enabled=mlflow_enabled,
@@ -252,6 +260,7 @@ def fine_tune(model: BYOL,
               validate_every: int,
               start_epoch: int = 0,
               mlflow_enabled: bool = False,
+              scheduler=None,
               **kwargs):
     """ Fine-tuning method
 
@@ -362,7 +371,11 @@ def fine_tune(model: BYOL,
             optimiser.step()
             metric_tracker.log_metric("Train Loss",
                                       loss.item())
-
+        if scheduler is not None:
+            current_lr = scheduler.get_last_lr()[0]
+            metric_tracker.log_metric("Scheduler LR",
+                                      current_lr)
+            scheduler.step()
         if (epoch_index + 1) % checkpoint_every == 0:
             saved_model_path = model.save(model_output_folder_path,
                                           optimiser=optimiser,
