@@ -2,7 +2,7 @@ import argparse
 import datetime
 import os
 import time
-
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 import mlflow
 import torch
 
@@ -233,7 +233,8 @@ def eval(model: BYOL,
                                                    persistent_workers=False)
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
-                                  device=device)
+                                  device=device,
+                                  mlflow_enabled=mlflow_enabled)
     print(f"Average loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Average loss",
@@ -546,7 +547,8 @@ def elapsed_to_dhms(elapsed_time):
 
 def test(model: BYOL,
          test_data_loader: torch.utils.data.DataLoader,
-         device: torch.device):
+         device: torch.device,
+         mlflow_enabled : bool = False):
     """Method to test/perform inference using model
 
     Args:
@@ -567,7 +569,9 @@ def test(model: BYOL,
     correct = 0
     total = 0
     loss_function = torch.nn.CrossEntropyLoss()
+
     losses = []
+    all_predictions, all_labels = [],[]
     with torch.no_grad():
         for images, labels in test_data_loader:
             images, labels = images.to(device), labels.to(device)
@@ -577,9 +581,41 @@ def test(model: BYOL,
             _, predicted = torch.max(output.data,
                                      1)
             total += labels.size(0)
+            all_labels += labels.cpu().numpy()
+            all_predictions += predicted.cpu().numpy()
             correct += (predicted == labels).sum().item()
     acc = correct / total
     print(f'Accuracy of the network on the {total} test images: {100 * acc} %', flush=True)
+
+    confusion_mat = confusion_matrix(y_true = all_labels,
+                                     y_pred = all_predictions,
+                                     labels = test_data_loader.classes)
+
+    per_class_accuracy = 100 * (confusion_mat.diagonal() / confusion_mat.sum(axis=1))
+
+
+    confusion_mat = ConfusionMatrixDisplay(confusion_matrix=confusion_mat,
+                                           display_labels = test_data_loader.classes)
+
+    results_report = classification_report(y_true=all_labels,
+                                           y_pred=all_predictions,
+                                           labels=test_data_loader.classes)
+    print(results_report)
+    for label_index, accuracy in enumerate(per_class_accuracy):
+        label_name = test_data_loader.classes[label_index]
+        print(f"{label_name} : {accuracy}")
+        if mlflow_enabled:
+            mlflow.log_metric(key=label_name,
+                              value=per_class_accuracy[label_index])
+    if mlflow_enabled:
+        mlflow.log_figure(figure = confusion_mat.figure_,
+                          artifact_file = "confusion_matrix.png")
+
+        mlflow.log_dict(dictionary=results_report,
+                        artifact_file="Classification Report.json")
+
+
+
 
     ### Reset model to train
     model.train()
