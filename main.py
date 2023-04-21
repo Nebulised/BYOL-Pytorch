@@ -388,7 +388,8 @@ def fine_tune(model: BYOL,
         if val_dataset is not None and (epoch_index + 1) % validate_every == 0:
             validation_loss, val_acc = test(model=model,
                                             test_data_loader=val_data_loader,
-                                            device=device)
+                                            device=device,
+                                            mlflow_enabled = mlflow_enabled)
             metric_tracker.log_metric("Validation Loss",
                                       validation_loss)
             metric_tracker.log_metric("Validation Accuracy",
@@ -414,7 +415,8 @@ def fine_tune(model: BYOL,
         model.load(os.path.join(model_output_folder_path, "byol_model_fine_tuned_lowest_val.pt"))
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
-                                  device=device)
+                                  device=device,
+                                  mlflow_enabled = mlflow_enabled)
     print(f"Test loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Test loss",
@@ -581,37 +583,49 @@ def test(model: BYOL,
             _, predicted = torch.max(output.data,
                                      1)
             total += labels.size(0)
-            all_labels += labels.cpu().numpy()
-            all_predictions += predicted.cpu().numpy()
+            all_labels += labels.cpu().tolist()
+            all_predictions += predicted.cpu().tolist()
             correct += (predicted == labels).sum().item()
     acc = correct / total
+
+    dataset_classes = test_data_loader.dataset.dataset.classes if isinstance(test_data_loader.dataset, torch.utils.data.Subset) else test_data_loader.dataset.classes
+
+    all_labels = [dataset_classes[label] for label in all_labels]
+    all_predictions = [dataset_classes[prediction] for prediction in all_predictions]
     print(f'Accuracy of the network on the {total} test images: {100 * acc} %', flush=True)
 
     confusion_mat = confusion_matrix(y_true = all_labels,
                                      y_pred = all_predictions,
-                                     labels = test_data_loader.classes)
-
+                                     labels = dataset_classes)
+    print(confusion_mat)
     per_class_accuracy = 100 * (confusion_mat.diagonal() / confusion_mat.sum(axis=1))
 
 
-    confusion_mat = ConfusionMatrixDisplay(confusion_matrix=confusion_mat,
-                                           display_labels = test_data_loader.classes)
+    confusion_mat_display = ConfusionMatrixDisplay(confusion_matrix=confusion_mat,
+                                                   display_labels = dataset_classes).plot()
 
     results_report = classification_report(y_true=all_labels,
                                            y_pred=all_predictions,
-                                           labels=test_data_loader.classes)
+                                           labels=dataset_classes,
+                                           digits = 4,
+                                           output_dict = False)
     print(results_report)
     for label_index, accuracy in enumerate(per_class_accuracy):
-        label_name = test_data_loader.classes[label_index]
+        label_name = dataset_classes[label_index]
         print(f"{label_name} : {accuracy}")
         if mlflow_enabled:
-            mlflow.log_metric(key=label_name,
+            mlflow.log_metric(key=f"{label_name}_acc",
                               value=per_class_accuracy[label_index])
     if mlflow_enabled:
-        mlflow.log_figure(figure = confusion_mat.figure_,
+        mlflow.log_figure(figure = confusion_mat_display.figure_,
                           artifact_file = "confusion_matrix.png")
 
-        mlflow.log_dict(dictionary=results_report,
+        # Seperate to classification report created earlier as we want it back out as a dictionary
+        mlflow.log_dict(dictionary=classification_report(y_true=all_labels,
+                                           y_pred=all_predictions,
+                                           labels=dataset_classes,
+                                           digits = 4,
+                                           output_dict = True),
                         artifact_file="Classification Report.json")
 
 
