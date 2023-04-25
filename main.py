@@ -71,6 +71,10 @@ def get_args():
                         type=str,
                         help="Mlflow run id to either resume training or to nest run under")
 
+    parser.add_argument("--seed",
+                        type = int,
+                        help = "See for randomness")
+
     parsed_args = parser.parse_args()
     # Model path must be specified when fine-tuning or testing
     if parsed_args.run_type != "train":
@@ -81,6 +85,16 @@ def get_args():
 
 def main():
     args = get_args()
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        import random
+        random.seed(args.seed)
+        import numpy as np
+        np.random.seed(args.seed)
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+
     run_type = args.run_type
     model_params = get_params(args.model_param_file_path)
     run_params = get_params(args.run_param_file_path)
