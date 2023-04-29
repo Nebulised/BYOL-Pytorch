@@ -248,7 +248,8 @@ def eval(model: BYOL,
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device,
-                                  mlflow_enabled=mlflow_enabled)
+                                  mlflow_enabled=mlflow_enabled,
+                                  metric_prefix="test")
     print(f"Average loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Average loss",
@@ -403,7 +404,8 @@ def fine_tune(model: BYOL,
             validation_loss, val_acc = test(model=model,
                                             test_data_loader=val_data_loader,
                                             device=device,
-                                            mlflow_enabled = mlflow_enabled)
+                                            mlflow_enabled = mlflow_enabled,
+                                            metric_prefix="val")
             metric_tracker.log_metric("Validation Loss",
                                       validation_loss)
             metric_tracker.log_metric("Validation Accuracy",
@@ -430,7 +432,8 @@ def fine_tune(model: BYOL,
     average_loss, accuracy = test(model=model,
                                   test_data_loader=test_data_loader,
                                   device=device,
-                                  mlflow_enabled = mlflow_enabled)
+                                  mlflow_enabled = mlflow_enabled,
+                                  metric_prefix="test")
     print(f"Test loss : {average_loss} | Test accuracy : {accuracy}", flush=True)
     if mlflow_enabled:
         mlflow.log_metric("Test loss",
@@ -564,7 +567,8 @@ def elapsed_to_dhms(elapsed_time):
 def test(model: BYOL,
          test_data_loader: torch.utils.data.DataLoader,
          device: torch.device,
-         mlflow_enabled : bool = False):
+         mlflow_enabled : bool = False,
+         metric_prefix=""):
     """Method to test/perform inference using model
 
     Args:
@@ -628,11 +632,13 @@ def test(model: BYOL,
         label_name = dataset_classes[label_index]
         print(f"{label_name} : {accuracy}")
         if mlflow_enabled:
-            mlflow.log_metric(key=f"{label_name}_acc",
+            mlflow.log_metric(key=f"{metric_prefix}_{label_name}_acc",
                               value=per_class_accuracy[label_index])
     if mlflow_enabled:
+        mlflow.log_metric(key=f"{metric_prefix}_avg_of_per_class_acc",
+                          value = sum(per_class_accuracy) / len(per_class_accuracy))
         mlflow.log_figure(figure = confusion_mat_display.figure_,
-                          artifact_file = "confusion_matrix.png")
+                          artifact_file = f"{metric_prefix}_confusion_matrix.png")
 
         # Seperate to classification report created earlier as we want it back out as a dictionary
         mlflow.log_dict(dictionary=classification_report(y_true=all_labels,
@@ -640,7 +646,7 @@ def test(model: BYOL,
                                            labels=dataset_classes,
                                            digits = 4,
                                            output_dict = True),
-                        artifact_file="Classification Report.json")
+                        artifact_file=f"{metric_prefix}_Classification Report.json")
 
 
 
