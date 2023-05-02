@@ -1,4 +1,6 @@
 import random
+from typing import Tuple
+
 import PIL.Image
 import torch
 import torchvision.transforms
@@ -118,12 +120,15 @@ class BYOLAugmenter:
 
     def create_view(self,
                     resize_crop : dict,
-                    random_flip : dict,
+                    random_flip_vertical : dict,
                     colour_jitter : dict,
                     gaussian_blur : dict,
                     solarize : dict,
                     normalise : dict,
-                    colour_drop : dict):
+                    colour_drop : dict,
+                    random_flip_horizontal : dict,
+                    random_affine : dict,
+                    random_perspective : dict):
         """ Method to create torchvision transform compositions for creating BYOL views
 
         Args:
@@ -154,7 +159,10 @@ class BYOLAugmenter:
         view_augs.append(torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                self.resize_output_width),
                                                        interpolation = InterpolationMode.BICUBIC))
-        view_augs.append(BYOLHorizontalFlip(**random_flip))
+        view_augs.append(BYOLRandomAffine(**random_affine))
+        view_augs.append(BYOLRandomPerspective(**random_perspective))
+        view_augs.append(BYOLHorizontalFlip(**random_flip_horizontal))
+        view_augs.append(BYOLVerticalFlip(**random_flip_vertical))
         view_augs.append(BYOLRandomColourJitter(**colour_jitter))
         view_augs.append(BYOLColourDrop(**colour_drop))
         view_augs.append(BYOLGaussianBlur(**gaussian_blur))
@@ -164,6 +172,41 @@ class BYOLAugmenter:
 
         return torchvision.transforms.Compose(view_augs)
 
+
+
+class BYOLRandomAffine:
+
+    def __init__(self,
+                 apply_probability : float,
+                 degrees : int,
+                 translate : Tuple[int, int] = None,
+                 scale : Tuple[int, int] = None,
+                 shear : int = None):
+        """Init method
+        Args:
+            apply_probability:
+                Min probability to apply random affine
+        """
+        super().__init__(apply_probability)
+        self.aug = torchvision.transforms.RandomAffine(degrees=degrees,
+                                                       translate=translate,
+                                                       scale=scale,
+                                                       shear=shear,
+                                                       interpolation=InterpolationMode.BICUBIC)
+
+class BYOLRandomPerspective:
+
+    def __init__(self,
+                 apply_probability : float,
+                 distortion_scale : float):
+        """Init method
+        Args:
+            apply_probability:
+                Min probability to apply random affine
+        """
+        super().__init__(apply_probability)
+        self.aug = torchvision.transforms.RandomPerspective(distortion_scale=distortion_scale,
+                                                            interpolation=InterpolationMode.BICUBIC)
 class BYOLRandomApplyAug:
     """Abstract class used to make any augmentation be able to be randomly applied
 
@@ -246,6 +289,24 @@ class BYOLHorizontalFlip(BYOLRandomApplyAug):
         """
         super().__init__(apply_probability)
         self.aug = torchvision.transforms.functional.hflip
+
+class BYOLVerticalFlip(BYOLRandomApplyAug):
+    """Class to augment an image randomly using horizontal flip torchvision augment
+
+        Attributes:
+            aug:
+                Torchvision transforms functional hflip
+    """
+
+    def __init__(self,
+                 apply_probability : float):
+        """Init method
+        Args:
+            apply_probability:
+                Min probability to apply horizontal flip
+        """
+        super().__init__(apply_probability)
+        self.aug = torchvision.transforms.functional.vflip
 
 
 class BYOLRandomColourJitter(BYOLRandomApplyAug):
