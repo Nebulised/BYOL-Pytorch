@@ -174,39 +174,6 @@ class BYOLAugmenter:
 
 
 
-class BYOLRandomAffine(BYOLRandomApplyAug):
-
-    def __init__(self,
-                 apply_probability : float,
-                 degrees : int,
-                 translate : Tuple[int, int] = None,
-                 scale : Tuple[int, int] = None,
-                 shear : int = None):
-        """Init method
-        Args:
-            apply_probability:
-                Min probability to apply random affine
-        """
-        super().__init__(apply_probability)
-        self.aug = torchvision.transforms.RandomAffine(degrees=degrees,
-                                                       translate=translate,
-                                                       scale=scale,
-                                                       shear=shear,
-                                                       interpolation=InterpolationMode.BICUBIC)
-
-class BYOLRandomPerspective(BYOLRandomApplyAug):
-
-    def __init__(self,
-                 apply_probability : float,
-                 distortion_scale : float):
-        """Init method
-        Args:
-            apply_probability:
-                Min probability to apply random affine
-        """
-        super().__init__(apply_probability)
-        self.aug = torchvision.transforms.RandomPerspective(distortion_scale=distortion_scale,
-                                                            interpolation=InterpolationMode.BICUBIC)
 class BYOLRandomApplyAug:
     """Abstract class used to make any augmentation be able to be randomly applied
 
@@ -482,3 +449,36 @@ class BYOLColourDrop(torchvision.transforms.RandomGrayscale):
         """
         super().__init__(p=apply_probability)
 
+class BYOLRandomAffine(BYOLRandomApplyAug):
+
+    def __init__(self,
+                 apply_probability : float,
+                 degrees : int,
+                 translate : Tuple[int, int] = None,
+                 scale : Tuple[int, int] = None,
+                 shear : int = None):
+        """Init method
+        Args:
+            apply_probability:
+                Min probability to apply random affine
+        """
+        super().__init__(apply_probability)
+        self.aug = torchvision.transforms.RandomAffine(degrees=degrees,
+                                                       translate=translate,
+                                                       scale=scale,
+                                                       shear=shear,
+                                                       interpolation=InterpolationMode.BICUBIC)
+
+class BYOLRandomPerspective(BYOLRandomApplyAug):
+
+    def __init__(self,
+                 apply_probability : float,
+                 distortion_scale : float):
+        """Init method
+        Args:
+            apply_probability:
+                Min probability to apply random affine
+        """
+        super().__init__(apply_probability)
+        self.aug = torchvision.transforms.RandomPerspective(distortion_scale=distortion_scale,
+                                                            interpolation=InterpolationMode.BICUBIC)
