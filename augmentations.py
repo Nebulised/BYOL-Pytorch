@@ -174,7 +174,7 @@ class BYOLAugmenter:
 
 
 
-class BYOLRandomAffine:
+class BYOLRandomAffine(BYOLRandomApplyAug):
 
     def __init__(self,
                  apply_probability : float,
@@ -194,7 +194,7 @@ class BYOLRandomAffine:
                                                        shear=shear,
                                                        interpolation=InterpolationMode.BICUBIC)
 
-class BYOLRandomPerspective:
+class BYOLRandomPerspective(BYOLRandomApplyAug):
 
     def __init__(self,
                  apply_probability : float,
