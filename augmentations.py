@@ -156,10 +156,10 @@ class BYOLAugmenter:
         view_augs.append(BYOLRandomResize(output_height=self.resize_output_height,
                                           output_width=self.resize_output_width,
                                           **resize_crop))
+        view_augs.append(BYOLRandomAffine(**random_affine))
         view_augs.append(torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                self.resize_output_width),
                                                        interpolation = InterpolationMode.BICUBIC))
-        view_augs.append(BYOLRandomAffine(**random_affine))
         view_augs.append(BYOLRandomPerspective(**random_perspective))
         view_augs.append(BYOLHorizontalFlip(**random_flip_horizontal))
         view_augs.append(BYOLVerticalFlip(**random_flip_vertical))
