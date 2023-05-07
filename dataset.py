@@ -21,6 +21,7 @@ def get_dataset(type : str,
                 percent_train_to_use_as_val : float=0.0,
                 train_transform=None,
                 test_transform=None,
+                seed = None,
                 **kwargs):
     """Method for getting train/val/test datasets
 
@@ -44,6 +45,7 @@ def get_dataset(type : str,
         train dataset, val dataset, test dataset
     """
     val_dataset = None
+    print(f"Seed provided for datasets : {seed}")
 
     if "emnist" in type:
         _, split = type.split("_")
@@ -82,14 +84,14 @@ def get_dataset(type : str,
                                                 sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
                                                                                          train_size=percent_data_to_use,
                                                                                          stratify=train_dataset.targets,
-                                                                                         random_state=42)[0])
+                                                                                         random_state=seed)[0])
 
     if percent_train_to_use_as_val > 0.0:
         train_split_indexes, val_split_indexes = sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
                                                                                           train_size=1-percent_train_to_use_as_val,
                                                                                           test_size=percent_train_to_use_as_val,
                                                                                           stratify=[train_dataset.dataset.targets[index] for index in train_dataset.indices] if percent_data_to_use < 1.0 else train_dataset.targets,
-                                                                                          random_state=42)
+                                                                                          random_state=seed)
 
         new_train_dataset = torch.utils.data.Subset(train_dataset,
                                                     train_split_indexes)

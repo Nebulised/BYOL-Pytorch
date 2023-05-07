@@ -213,6 +213,7 @@ def eval(model: BYOL,
          num_workers: int,
          device: torch.device,
          mlflow_enabled: bool = False,
+         seed = None,
          **kwargs):
     """
     Args:
@@ -239,7 +240,8 @@ def eval(model: BYOL,
 
     _, _, test_dataset = get_dataset(type=dataset_type,
                                      path=dataset_path,
-                                     test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]))
+                                     test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
+                                     seed=seed)
     test_data_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                                    batch_size=1,
                                                    shuffle=False,
@@ -277,6 +279,7 @@ def fine_tune(model: BYOL,
               start_epoch: int = 0,
               mlflow_enabled: bool = False,
               scheduler=None,
+              seed = None,
               **kwargs):
     """ Fine-tuning method
 
@@ -331,11 +334,12 @@ def fine_tune(model: BYOL,
                                    resize_output_width=model.input_width)
 
     train_dataset, val_dataset, test_dataset = get_dataset(type=dataset_type,
-                                                path=dataset_path,
-                                                train_transform=byol_augmenter.get_fine_tune_augmentations(**augmentation_params["train"]),
-                                                test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
-                                                percent_data_to_use=percent_data_to_use,
-                                                percent_train_to_use_as_val=percent_train_to_use_as_val)
+                                                           path=dataset_path,
+                                                           train_transform=byol_augmenter.get_fine_tune_augmentations(**augmentation_params["train"]),
+                                                           test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
+                                                           percent_data_to_use=percent_data_to_use,
+                                                           percent_train_to_use_as_val=percent_train_to_use_as_val,
+                                                           seed = seed)
 
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                     batch_size=batch_size,
@@ -458,6 +462,7 @@ def pre_train(model: BYOL,
               percent_data_to_use: float,
               start_epoch=0,
               mlflow_enabled=False,
+              seed = None,
               **kwargs):
     """Self supervised training method
 
@@ -509,7 +514,8 @@ def pre_train(model: BYOL,
                                 path=dataset_path,
                                 train_transform=byol_augmenter.self_supervised_pre_train_transform,
                                 percent_train_to_use_as_val=0.0,
-                                percent_data_to_use=percent_data_to_use)
+                                percent_data_to_use=percent_data_to_use,
+                                seed = seed)
     data_loader = torch.utils.data.DataLoader(dataset=dataset,
                                               batch_size=batch_size,
                                               shuffle=True,
