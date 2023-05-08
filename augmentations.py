@@ -135,7 +135,8 @@ class BYOLAugmenter:
                     random_affine: dict,
                     random_perspective: dict,
                     cut_paste: dict,
-                    cut_paste_scar: dict):
+                    cut_paste_scar: dict,
+                    cut_paste_affine : dict):
         """ Method to create torchvision transform compositions for creating BYOL views
 
         Args:
@@ -171,6 +172,7 @@ class BYOLAugmenter:
         view_augs.append(BYOLVerticalFlip(**random_flip_vertical))
         view_augs.append(BYOLCutPaste(**cut_paste))
         view_augs.append(BYOLCutPasteScar(**cut_paste_scar))
+        view_augs.append(BYOLCutPasteAffine(**cut_paste_affine))
         view_augs.append(BYOLRandomPerspective(**random_perspective))
         view_augs.append(BYOLRandomColourJitter(**colour_jitter))
         view_augs.append(BYOLColourDrop(**colour_drop))
