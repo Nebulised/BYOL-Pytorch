@@ -15,6 +15,71 @@ from torchvision.transforms.functional import adjust_hue, adjust_brightness, adj
 from torchvision.transforms import RandomApply
 
 
+class BYOLRandomApplyAug:
+    """Abstract class used to make any augmentation be able to be randomly applied
+
+    Attributes:
+        apply_probability:
+            The chance the augmentation assigned to the aug attribute will be applied to the input image
+        aug:
+            The augmentation that may be applied to the input image
+
+    """
+
+    def __init__(self,
+                 apply_probability: float,
+                 aug: torchvision.transforms):
+        """Initialises abstract class with None for aug
+
+        Args:
+            apply_probability:
+                float between 0 and 1.0 representing the chance the augmentation will be applied to the image
+        """
+        self.aug = torchvision.transforms.RandomApply(p = apply_probability,
+                                                      transforms = [aug])
+
+    def __call__(self,
+                 image: torch.Tensor):
+        """Method to apply augment
+
+        Args:
+            image:
+                The image to be augmented
+
+        Returns:
+            Post augmented image if prob less than min apply probability else original image
+        """
+        return self.aug(image)
+
+
+class CustomAugApplicator:
+
+    def __init__(self,
+                 augmentation,
+                 apply_both_if_applied: bool,
+                 apply_probability :float,
+                 **params):
+        self.apply_both_if_applied = apply_both_if_applied
+        if self.apply_both_if_applied:
+            self.apply_probability = apply_probability
+            self.aug = augmentation(apply_probability = 1.0,
+                                    **params)
+        else:
+            self.aug = augmentation(apply_probability = apply_probability,
+                                    **params)
+
+    def __call__(self,
+                 image_view_1,
+                 image_view_2):
+        if self.apply_both_if_applied:
+            if torch.rand(1) < self.apply_probability:
+                return self.aug(image_view_1), self.aug(image_view_2)
+            else:
+                return image_view_1, image_view_2
+        else:
+            return self.aug(image_view_1), self.aug(image_view_2)
+
+
 class BYOLAugmenter:
     """ Class for applying augmentations used in BYOL paper
 
@@ -36,6 +101,7 @@ class BYOLAugmenter:
         self.resize_output_width = resize_output_width
         self.view_1 = None
         self.view_2 = None
+        self.custom_aug_list = None
 
     def self_supervised_pre_train_transform(self,
                                             image: torch.Tensor):
@@ -123,6 +189,65 @@ class BYOLAugmenter:
                                                ToTensor(),
                                                Normalize(**normalise)])
 
+    def setup_custom_view(self,
+                          resize_crop: dict,
+                          random_flip_vertical: dict,
+                          colour_jitter: dict,
+                          gaussian_blur: dict,
+                          solarize: dict,
+                          normalise: dict,
+                          colour_drop: dict,
+                          random_flip_horizontal: dict,
+                          random_affine: dict,
+                          random_perspective: dict,
+                          cut_paste: dict,
+                          cut_paste_scar: dict,
+                          cut_paste_affine: dict):
+        self.custom_aug_list = []
+        resize_crop["output_height"] = self.resize_output_height
+        resize_crop["output_width"] = self.resize_output_width
+        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomResize,
+                                                        **resize_crop))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomAffine,
+                                                        **random_affine))
+        self.custom_aug_list.append(torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                                          self.resize_output_width),
+                                                                  interpolation = InterpolationMode.BICUBIC))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLHorizontalFlip,
+                                                        **random_flip_horizontal))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLVerticalFlip,
+                                                        **random_flip_vertical))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLCutPaste,
+                                                        **cut_paste))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteScar,
+                                                        **cut_paste_scar))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteAffine,
+                                                        **cut_paste_affine))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomPerspective,
+                                                        **random_perspective))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomColourJitter,
+                                                        **colour_jitter))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLColourDrop,
+                                                        **colour_drop))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLGaussianBlur,
+                                                        **gaussian_blur))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLSolarize,
+                                                        **solarize))
+        self.custom_aug_list.append(ToTensor())
+        # self.custom_aug_list.append(Normalize(**normalise))
+
+    def apply_custom_view(self,
+                          image):
+
+        image_view_1, image_view_2 = image, image
+        for each_transform in self.custom_aug_list:
+            if isinstance(each_transform, CustomAugApplicator):
+                image_view_1, image_view_2 = each_transform(image_view_1,
+                                                            image_view_2)
+            else:
+                image_view_1, image_view_2 = each_transform(image_view_1), each_transform(image_view_2)
+        return image_view_1, image_view_2
+
     def create_view(self,
                     resize_crop: dict,
                     random_flip_vertical: dict,
@@ -136,7 +261,7 @@ class BYOLAugmenter:
                     random_perspective: dict,
                     cut_paste: dict,
                     cut_paste_scar: dict,
-                    cut_paste_affine : dict):
+                    cut_paste_affine: dict):
         """ Method to create torchvision transform compositions for creating BYOL views
 
         Args:
@@ -182,47 +307,6 @@ class BYOLAugmenter:
         view_augs.append(Normalize(**normalise))
 
         return torchvision.transforms.Compose(view_augs)
-
-
-class BYOLRandomApplyAug:
-    """Abstract class used to make any augmentation be able to be randomly applied
-
-    Attributes:
-        apply_probability:
-            The chance the augmentation assigned to the aug attribute will be applied to the input image
-        aug:
-            The augmentation that may be applied to the input image
-
-    """
-
-    def __init__(self,
-                 apply_probability: float,
-                 aug: torchvision.transforms,
-                 use_inbuilt_random: bool = False):
-        """Initialises abstract class with None for aug
-
-        Args:
-            apply_probability:
-                float between 0 and 1.0 representing the chance the augmentation will be applied to the image
-        """
-        if use_inbuilt_random:
-            self.aug = aug
-        else:
-            self.aug = torchvision.transforms.RandomApply(p = apply_probability,
-                                                          transforms = [aug])
-
-    def __call__(self,
-                 image: torch.Tensor):
-        """Method to apply augment
-
-        Args:
-            image:
-                The image to be augmented
-
-        Returns:
-            Post augmented image if prob less than min apply probability else original image
-        """
-        return self.aug(image)
 
 
 class BYOLRandomResize(BYOLRandomApplyAug):
@@ -432,17 +516,21 @@ class BYOLRandomPerspective(BYOLRandomApplyAug):
 class BYOLCutPaste(torchvision.transforms.RandomErasing):
 
     def __init__(self,
-                 apply_probability: float):
+                 apply_probability: float,
+                 scale = (0.02, 0.15),
+                 ratio = (0.3, 1),
+                 colour_jitter_level: float = 0.1):
         super(BYOLCutPaste,
               self).__init__(p = apply_probability,
-                             scale = (0.02, 0.15),
-                             ratio = (0.3, 1),
+                             scale = scale,
+                             ratio = ratio,
                              value = 255,
                              inplace = False)
-        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = 0.1,
-                                                                                      contrast = 0.1,
-                                                                                      saturation = 0.1,
-                                                                                      hue = 0.1)])
+
+        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = colour_jitter_level,
+                                                                                      contrast = colour_jitter_level,
+                                                                                      saturation = colour_jitter_level,
+                                                                                      hue = colour_jitter_level)])
 
     def forward(self,
                 img):
@@ -485,21 +573,24 @@ class BYOLCutPaste(torchvision.transforms.RandomErasing):
             img = img.clone()
             img[..., destination_i: destination_i + h, destination_j: destination_j + w][aug_img != v] = aug_img[aug_img != v]
 
-
-
         return img
 
 
 class BYOLCutPasteScar(BYOLCutPaste):
 
     def __init__(self,
-                 apply_probability: float):
-        super().__init__(apply_probability = apply_probability)
-        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = 0.1,
-                                                                                      contrast = 0.1,
-                                                                                      saturation = 0.1,
-                                                                                      hue = 0.1),
-                                                   torchvision.transforms.RandomRotation(degrees = 45,
+                 apply_probability: float,
+                 colour_jitter_level: float = 0.1,
+                 degrees : int = 45):
+        super().__init__(apply_probability=apply_probability,
+                         scale = (0, 0),
+                         ratio = (0, 0),
+                         colour_jitter_level = colour_jitter_level)
+        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = colour_jitter_level,
+                                                                                      contrast = colour_jitter_level,
+                                                                                      saturation = colour_jitter_level,
+                                                                                      hue = colour_jitter_level),
+                                                   torchvision.transforms.RandomRotation(degrees = degrees,
                                                                                          fill = self.value)])
 
     @staticmethod
@@ -546,22 +637,27 @@ class BYOLCutPasteScar(BYOLCutPaste):
 class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
 
     def __init__(self,
-                 apply_probability: float):
+                 apply_probability: float,
+                 scale=(0.02, 0.15),
+                 ratio=(0.3, 1),
+                 colour_jitter_level: float = 0.1,
+                 degrees = 30,
+                 translate = (0.1, 0.1),
+                 shear = (-15, 15)):
         super().__init__(p = apply_probability,
-                         scale = (0.02, 0.15),
-                         ratio = (0.3, 1),
+                         scale = scale,
+                         ratio = ratio,
                          value = 255,
                          inplace = False)
-        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness=0.1,
-                                                                                      contrast=0.1,
-                                                                                      saturation=0.1,
-                                                                                      hue=0.1),
-                                                   torchvision.transforms.RandomAffine(degrees=30,
-                                                                                       translate=(0.1, 0.1),
-                                                                                       shear=(-15, 15),
-                                                                                       interpolation=InterpolationMode.NEAREST,
+        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = colour_jitter_level,
+                                                                                      contrast = colour_jitter_level,
+                                                                                      saturation = colour_jitter_level,
+                                                                                      hue = colour_jitter_level),
+                                                   torchvision.transforms.RandomAffine(degrees = degrees,
+                                                                                       translate = translate,
+                                                                                       shear = shear,
+                                                                                       interpolation = InterpolationMode.NEAREST,
                                                                                        fill = self.value)])
-
 
     def forward(self,
                 img):
@@ -603,10 +699,9 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
                                                                                 w_2],
                                                                         interpolation = InterpolationMode.BILINEAR))
 
-
             img = img.clone()
 
-            img[..., center_i - math.floor(h_2/2): center_i + math.ceil(h_2/2), center_j - math.floor(w_2 / 2): center_j + math.ceil(w_2/2)][aug_img != v] = aug_img[aug_img != v]
+            img[..., center_i - math.floor(h_2 / 2): center_i + math.ceil(h_2 / 2), center_j - math.floor(w_2 / 2): center_j + math.ceil(w_2 / 2)][aug_img != v] = aug_img[aug_img != v]
         return img
 
     @staticmethod
