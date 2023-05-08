@@ -3,8 +3,10 @@ import random
 from typing import Tuple, Optional, List
 
 import PIL.Image
+import numpy as np
 import torch
 import torchvision.transforms
+from matplotlib import pyplot as plt
 from torch import Tensor
 from torch.distributions import Uniform
 from torchvision.transforms import ToTensor, Normalize
@@ -92,8 +94,8 @@ class BYOLAugmenter:
             torchvision transform composition consisting of
             BYOLRandomResize, BYOLHorizontalFlip, ToTensor and Normalize
         """
-        return torchvision.transforms.Compose([BYOLRandomResize(output_height=self.resize_output_height,
-                                                                output_width=self.resize_output_width,
+        return torchvision.transforms.Compose([BYOLRandomResize(output_height = self.resize_output_height,
+                                                                output_width = self.resize_output_width,
                                                                 **resize_crop),
                                                torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                                      self.resize_output_width),
@@ -115,25 +117,25 @@ class BYOLAugmenter:
             Resize, ToTensor and Normalize
 
         """
-        return torchvision.transforms.Compose([torchvision.transforms.Resize(size=(self.resize_output_height,
-                                                                                   self.resize_output_width),
-                                                                             interpolation=InterpolationMode.BICUBIC),
+        return torchvision.transforms.Compose([torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                                                     self.resize_output_width),
+                                                                             interpolation = InterpolationMode.BICUBIC),
                                                ToTensor(),
                                                Normalize(**normalise)])
 
     def create_view(self,
-                    resize_crop : dict,
-                    random_flip_vertical : dict,
-                    colour_jitter : dict,
-                    gaussian_blur : dict,
-                    solarize : dict,
-                    normalise : dict,
-                    colour_drop : dict,
-                    random_flip_horizontal : dict,
-                    random_affine : dict,
-                    random_perspective : dict,
-                    cut_paste : dict,
-                    cut_paste_scar : dict):
+                    resize_crop: dict,
+                    random_flip_vertical: dict,
+                    colour_jitter: dict,
+                    gaussian_blur: dict,
+                    solarize: dict,
+                    normalise: dict,
+                    colour_drop: dict,
+                    random_flip_horizontal: dict,
+                    random_affine: dict,
+                    random_perspective: dict,
+                    cut_paste: dict,
+                    cut_paste_scar: dict):
         """ Method to create torchvision transform compositions for creating BYOL views
 
         Args:
@@ -158,8 +160,8 @@ class BYOLAugmenter:
             BYOLGaussianBlur, BYOLSolarize, torchvision ToTensor and torchvision Normalize
         """
         view_augs = []
-        view_augs.append(BYOLRandomResize(output_height=self.resize_output_height,
-                                          output_width=self.resize_output_width,
+        view_augs.append(BYOLRandomResize(output_height = self.resize_output_height,
+                                          output_width = self.resize_output_width,
                                           **resize_crop))
         view_augs.append(BYOLRandomAffine(**random_affine))
         view_augs.append(torchvision.transforms.Resize(size = (self.resize_output_height,
@@ -180,7 +182,6 @@ class BYOLAugmenter:
         return torchvision.transforms.Compose(view_augs)
 
 
-
 class BYOLRandomApplyAug:
     """Abstract class used to make any augmentation be able to be randomly applied
 
@@ -191,10 +192,11 @@ class BYOLRandomApplyAug:
             The augmentation that may be applied to the input image
 
     """
+
     def __init__(self,
-                 apply_probability : float,
-                 aug : torchvision.transforms,
-                 use_inbuilt_random : bool = False):
+                 apply_probability: float,
+                 aug: torchvision.transforms,
+                 use_inbuilt_random: bool = False):
         """Initialises abstract class with None for aug
 
         Args:
@@ -204,11 +206,11 @@ class BYOLRandomApplyAug:
         if use_inbuilt_random:
             self.aug = aug
         else:
-            self.aug = torchvision.transforms.RandomApply(p=apply_probability,
-                                                          transforms=[aug])
+            self.aug = torchvision.transforms.RandomApply(p = apply_probability,
+                                                          transforms = [aug])
 
     def __call__(self,
-                 image : torch.Tensor):
+                 image: torch.Tensor):
         """Method to apply augment
 
         Args:
@@ -221,7 +223,6 @@ class BYOLRandomApplyAug:
         return self.aug(image)
 
 
-
 class BYOLRandomResize(BYOLRandomApplyAug):
     """Class to augment an image randomly using RandomResize torchvision augment
 
@@ -231,9 +232,9 @@ class BYOLRandomResize(BYOLRandomApplyAug):
     """
 
     def __init__(self,
-                 apply_probability : float,
-                 output_height : int,
-                 output_width : int):
+                 apply_probability: float,
+                 output_height: int,
+                 output_width: int):
         """Init method
 
         Args:
@@ -245,9 +246,8 @@ class BYOLRandomResize(BYOLRandomApplyAug):
                 Output width post random crop
         """
         super().__init__(apply_probability,
-                         aug=torchvision.transforms.RandomResizedCrop(size=(output_height, output_width),
-                                                            interpolation=InterpolationMode.BICUBIC))
-
+                         aug = torchvision.transforms.RandomResizedCrop(size = (output_height, output_width),
+                                                                        interpolation = InterpolationMode.BICUBIC))
 
 
 class BYOLHorizontalFlip(torchvision.transforms.RandomHorizontalFlip):
@@ -259,13 +259,13 @@ class BYOLHorizontalFlip(torchvision.transforms.RandomHorizontalFlip):
     """
 
     def __init__(self,
-                 apply_probability : float):
+                 apply_probability: float):
         """Init method
         Args:
             apply_probability:
                 Min probability to apply horizontal flip
         """
-        super().__init__(p=apply_probability)
+        super().__init__(p = apply_probability)
 
 
 class BYOLVerticalFlip(torchvision.transforms.RandomVerticalFlip):
@@ -277,14 +277,13 @@ class BYOLVerticalFlip(torchvision.transforms.RandomVerticalFlip):
     """
 
     def __init__(self,
-                 apply_probability : float):
+                 apply_probability: float):
         """Init method
         Args:
             apply_probability:
                 Min probability to apply vertical flip
         """
-        super().__init__(p=apply_probability)
-
+        super().__init__(p = apply_probability)
 
 
 class BYOLRandomColourJitter(BYOLRandomApplyAug):
@@ -296,11 +295,11 @@ class BYOLRandomColourJitter(BYOLRandomApplyAug):
     """
 
     def __init__(self,
-                 apply_probability : float,
-                 brightness_delta : float,
-                 contrast_delta : float,
-                 saturation_delta : float,
-                 hue_delta : float):
+                 apply_probability: float,
+                 brightness_delta: float,
+                 contrast_delta: float,
+                 saturation_delta: float,
+                 hue_delta: float):
         """Init method
 
         Args:
@@ -320,11 +319,10 @@ class BYOLRandomColourJitter(BYOLRandomApplyAug):
                 Betwen 0.0 and 0.5
         """
         super().__init__(apply_probability,
-                         aug=torchvision.transforms.ColorJitter(brightness=brightness_delta,
-                                                                contrast=contrast_delta,
-                                                                saturation=saturation_delta,
-                                                                hue=hue_delta))
-
+                         aug = torchvision.transforms.ColorJitter(brightness = brightness_delta,
+                                                                  contrast = contrast_delta,
+                                                                  saturation = saturation_delta,
+                                                                  hue = hue_delta))
 
 
 class BYOLGaussianBlur(BYOLRandomApplyAug):
@@ -350,9 +348,8 @@ class BYOLGaussianBlur(BYOLRandomApplyAug):
                 Sigma for Gaussian Blur
         """
         super().__init__(apply_probability,
-                         aug = torchvision.transforms.GaussianBlur(kernel_size=kernel_size,
-                                                                   sigma=sigma))
-
+                         aug = torchvision.transforms.GaussianBlur(kernel_size = kernel_size,
+                                                                   sigma = sigma))
 
 
 class BYOLSolarize(torchvision.transforms.RandomSolarize):
@@ -369,11 +366,8 @@ class BYOLSolarize(torchvision.transforms.RandomSolarize):
     def __init__(self,
                  apply_probability,
                  threshold):
-        super().__init__(p=apply_probability)
-
-
-
-
+        super().__init__(p = apply_probability,
+                         threshold = threshold)
 
 
 class BYOLColourDrop(torchvision.transforms.RandomGrayscale):
@@ -385,6 +379,7 @@ class BYOLColourDrop(torchvision.transforms.RandomGrayscale):
         apply_probability:
             min float to apply augmentation
     """
+
     def __init__(self,
                  apply_probability: float):
         """
@@ -393,58 +388,62 @@ class BYOLColourDrop(torchvision.transforms.RandomGrayscale):
             apply_probability:
                 Min probability to apply grayscale conversion
         """
-        super().__init__(p=apply_probability)
+        super().__init__(p = apply_probability)
+
 
 class BYOLRandomAffine(BYOLRandomApplyAug):
 
     def __init__(self,
-                 apply_probability : float,
-                 degrees : int,
-                 translate : Tuple[int, int] = None,
-                 scale : Tuple[int, int] = None,
-                 shear : int = None):
+                 apply_probability: float,
+                 degrees: int,
+                 translate: Tuple[int, int] = None,
+                 scale: Tuple[int, int] = None,
+                 shear: int = None):
         """Init method
         Args:
             apply_probability:
                 Min probability to apply random affine
         """
         super().__init__(apply_probability,
-                         aug=torchvision.transforms.RandomAffine(degrees=degrees,
-                                                                 translate=translate,
-                                                                 scale=scale,
-                                                                 shear=shear,
-                                                                 interpolation=InterpolationMode.BICUBIC))
+                         aug = torchvision.transforms.RandomAffine(degrees = degrees,
+                                                                   translate = translate,
+                                                                   scale = scale,
+                                                                   shear = shear,
+                                                                   interpolation = InterpolationMode.BICUBIC))
+
 
 class BYOLRandomPerspective(BYOLRandomApplyAug):
 
     def __init__(self,
-                 apply_probability : float,
-                 distortion_scale : float):
+                 apply_probability: float,
+                 distortion_scale: float):
         """Init method
         Args:
             apply_probability:
                 Min probability to apply random affine
         """
         super().__init__(apply_probability,
-                         aug = torchvision.transforms.RandomPerspective(distortion_scale=distortion_scale,
-                                                            interpolation=InterpolationMode.BICUBIC))
+                         aug = torchvision.transforms.RandomPerspective(distortion_scale = distortion_scale,
+                                                                        interpolation = InterpolationMode.BICUBIC))
 
 
 class BYOLCutPaste(torchvision.transforms.RandomErasing):
 
     def __init__(self,
-                 apply_probability : float):
-        super().__init__(p=apply_probability,
-                         scale=(0.02, 0.15),
-                         ratio=(0.3, 3,3),
-                         value = None,
-                         inplace=False)
-        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness=0.1,
-                                                                                     contrast=0.1,
-                                                                                     saturation=0.1,
-                                                                                     hue=0.1)])
+                 apply_probability: float):
+        super(BYOLCutPaste,
+              self).__init__(p = apply_probability,
+                             scale = (0.02, 0.15),
+                             ratio = (0.3, 1),
+                             value = 255,
+                             inplace = False)
+        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = 0.1,
+                                                                                      contrast = 0.1,
+                                                                                      saturation = 0.1,
+                                                                                      hue = 0.1)])
 
-    def forward(self, img):
+    def forward(self,
+                img):
         if torch.rand(1) < self.p:
 
             # cast self.value to script acceptable type
@@ -459,49 +458,53 @@ class BYOLCutPaste(torchvision.transforms.RandomErasing):
                 value = [float(v) for v in self.value]
             else:
                 value = self.value
-
             if value is not None and not (len(value) in (1, img.shape[-3])):
                 raise ValueError(
-                    "If value is a sequence, it should have either a single value or "
-                    f"{img.shape[-3]} (number of input channels)"
-                )
+                        "If value is a sequence, it should have either a single value or "
+                        f"{img.shape[-3]} (number of input channels)"
+                        )
 
             img_h, img_w = img.shape[-2], img.shape[-1]
             i, j, h, w, v = self.get_params(img,
-                                            scale=self.scale,
-                                            ratio=self.ratio,
-                                            value=value)
+                                            scale = self.scale,
+                                            ratio = self.ratio,
+                                            value = value)
             if h == img_h or w == img_w:
                 print("Warning, did not find a solution for cutpaste. Skipping")
                 return img
             destination_i = torch.randint(0,
                                           img_h - h + 1,
-                                          size=(1,)).item()
+                                          size = (1,)).item()
             destination_j = torch.randint(0,
                                           img_w - w + 1,
-                                          size=(1,)).item()
+                                          size = (1,)).item()
 
+            aug_img = self.aug(img[..., i: i + h, j: j + w])
             img = img.clone()
-            img[..., destination_i : destination_i + h, destination_j : destination_j + w] = self.aug(img[..., i: i + h, j: j + w])
+            img[..., destination_i: destination_i + h, destination_j: destination_j + w][aug_img != v] = aug_img[aug_img != v]
+
+
+
         return img
 
 
 class BYOLCutPasteScar(BYOLCutPaste):
 
     def __init__(self,
-                 apply_probability : float):
-        super().__init__(apply_probability=apply_probability)
-        self.aug = torchvision.transforms.Compose([torchvision.transforms.RandomRotation(degrees=45,
-                                                                                         interpolation=InterpolationMode.BICUBIC),
-                                                   torchvision.transforms.ColorJitter(brightness=0.1,
-                                                                                     contrast=0.1,
-                                                                                     saturation=0.1,
-                                                                                     hue=0.1)])
-
-
+                 apply_probability: float):
+        super().__init__(apply_probability = apply_probability)
+        self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness = 0.1,
+                                                                                      contrast = 0.1,
+                                                                                      saturation = 0.1,
+                                                                                      hue = 0.1),
+                                                   torchvision.transforms.RandomRotation(degrees = 45,
+                                                                                         fill = self.value)])
 
     @staticmethod
-    def get_params(img: Tensor, scale: Tuple[float, float], ratio: Tuple[float, float], value: Optional[List[float]] = None):
+    def get_params(img: Tensor,
+                   scale: Tuple[float, float],
+                   ratio: Tuple[float, float],
+                   value: Optional[List[float]] = None):
         img_c, img_h, img_w = img.shape[-3], img.shape[-2], img.shape[-1]
         # area = img_h * img_w
         #
@@ -512,48 +515,54 @@ class BYOLCutPasteScar(BYOLCutPaste):
             # aspect_ratio = torch.exp(torch.empty(1).uniform_(log_ratio[0],
             #                                                  log_ratio[1])).item()
 
-            h = torch.empty(1).uniform_(2, 16).item()
-            w = torch.empty(1).uniform_(10, 25).item()
+            h = torch.randint(low = 2,
+                              high = 16,
+                              size = (1,)).item()
+            w = torch.randint(low = 10,
+                              high = 25,
+                              size = (1,)).item()
             if not (h < img_h and w < img_w):
                 continue
 
             if value is None:
                 v = torch.empty([img_c, h, w],
-                                dtype=torch.float32).normal_()
+                                dtype = torch.float32).normal_()
             else:
                 v = torch.tensor(value)[:, None, None]
-
             i = torch.randint(0,
                               img_h - h + 1,
-                              size=(1,)).item()
+                              size = (1,)).item()
             j = torch.randint(0,
                               img_w - w + 1,
-                              size=(1,)).item()
+                              size = (1,)).item()
             return i, j, h, w, v
 
         # Return original image
         return 0, 0, img_h, img_w, img
 
+
 class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
 
     def __init__(self,
-                 apply_probability : float):
-        super().__init__(p=apply_probability,
-                         scale=(0.02, 0.15),
-                         ratio=(0.3, 3,3),
-                         value = None,
-                         inplace=False)
+                 apply_probability: float):
+        super().__init__(p = apply_probability,
+                         scale = (0.02, 0.15),
+                         ratio = (0.3, 1),
+                         value = 255,
+                         inplace = False)
         self.aug = torchvision.transforms.Compose([torchvision.transforms.ColorJitter(brightness=0.1,
                                                                                       contrast=0.1,
                                                                                       saturation=0.1,
                                                                                       hue=0.1),
                                                    torchvision.transforms.RandomAffine(degrees=30,
-                                                                                       translate=(0.2, 0.2),
-                                                                                       scale=(0.75, 1.25),
-                                                                                       shear=(-30, 30),
-                                                                                       interpolation=InterpolationMode.BICUBIC)])
+                                                                                       translate=(0.1, 0.1),
+                                                                                       shear=(-15, 15),
+                                                                                       interpolation=InterpolationMode.NEAREST,
+                                                                                       fill = self.value)])
 
-    def forward(self, img):
+
+    def forward(self,
+                img):
         if torch.rand(1) < self.p:
 
             # cast self.value to script acceptable type
@@ -571,26 +580,38 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
 
             if value is not None and not (len(value) in (1, img.shape[-3])):
                 raise ValueError(
-                    "If value is a sequence, it should have either a single value or "
-                    f"{img.shape[-3]} (number of input channels)"
-                )
+                        "If value is a sequence, it should have either a single value or "
+                        f"{img.shape[-3]} (number of input channels)"
+                        )
 
             img_h, img_w = img.shape[-2], img.shape[-1]
-            i, j, h, w, v, h_2, w_2 = self.get_params(img,
-                                            scale=self.scale,
-                                            ratio=self.ratio,
-                                            value=value)
+            center_i, center_j, h, w, v, h_2, w_2 = self.get_params(img,
+                                                                    scale = self.scale,
+                                                                    ratio = self.ratio,
+                                                                    value = value)
             if h == img_h or w == img_w:
                 print("Warning, did not find a solution for cutpaste. Skipping")
                 return img
+            half_height = int(h / 2)
+            half_width = int(w / 2)
+            aug_img = self.aug(torchvision.transforms.functional.resize(img[...,
+                                                                        center_i - half_height: center_i + half_height,
+                                                                        center_j - half_width: center_j + half_width],
+                                                                        size = [h_2,
+                                                                                w_2],
+                                                                        interpolation = InterpolationMode.BILINEAR))
+
 
             img = img.clone()
-            img[..., destination_i : destination_i + h, destination_j : destination_j + w] = self.aug(img[..., i: i + h, j: j + w])
+
+            img[..., center_i - math.floor(h_2/2): center_i + math.ceil(h_2/2), center_j - math.floor(w_2 / 2): center_j + math.ceil(w_2/2)][aug_img != v] = aug_img[aug_img != v]
         return img
 
-
     @staticmethod
-    def get_params(img: Tensor, scale: Tuple[float, float], ratio: Tuple[float, float], value: Optional[List[float]] = None):
+    def get_params(img: Tensor,
+                   scale: Tuple[float, float],
+                   ratio: Tuple[float, float],
+                   value: Optional[List[float]] = None):
         """Get parameters for ``erase`` for a random erasing.
 
         Args:
@@ -609,16 +630,18 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
 
         log_ratio = torch.log(torch.tensor(ratio))
         for _ in range(10):
-            erase_area = area * torch.empty(1).uniform_(scale[0], scale[1]).item()
-            aspect_ratio = torch.exp(torch.empty(1).uniform_(log_ratio[0], log_ratio[1])).item()
+            erase_area = area * torch.empty(1).uniform_(scale[0],
+                                                        scale[1]).item()
+            aspect_ratio = torch.exp(torch.empty(1).uniform_(log_ratio[0],
+                                                             log_ratio[1])).item()
 
             h = int(round(math.sqrt(erase_area * aspect_ratio)))
             w = int(round(math.sqrt(erase_area / aspect_ratio)))
 
             erase_area_2 = area * torch.empty(1).uniform_(scale[0],
-                                                        scale[1]).item()
+                                                          scale[1]).item()
             aspect_ratio_2 = torch.exp(torch.empty(1).uniform_(log_ratio[0],
-                                                             log_ratio[1])).item()
+                                                               log_ratio[1])).item()
 
             h_2 = int(round(math.sqrt(erase_area_2 * aspect_ratio_2)))
             w_2 = int(round(math.sqrt(erase_area_2 / aspect_ratio_2)))
@@ -627,15 +650,22 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
                 continue
 
             if value is None:
-                v = torch.empty([img_c, h, w], dtype=torch.float32).normal_()
+                v = torch.empty([img_c, h, w],
+                                dtype = torch.float32).normal_()
             else:
                 v = torch.tensor(value)[:, None, None]
 
-            max_h = max(h, h_2)
-            max_w = max(w, w_2)
-            i = torch.randint(0, img_h - max_h + 1, size=(1,)).item()
-            j = torch.randint(0, img_w - max_w + 1, size=(1,)).item()
-            return i, j, h, w, v, h_2, w_2
+            half_max_width = int(max(w_2,
+                                     w) / 2)
+            half_max_height = int(max(h_2,
+                                      h) / 2)
+            center_i = torch.randint(half_max_height,
+                                     img_h - half_max_height + 1,
+                                     size = (1,)).item()
+            center_j = torch.randint(half_max_width + 1,
+                                     img_w - half_max_width + 1,
+                                     size = (1,)).item()
+            return center_i, center_j, h, w, v, h_2, w_2
 
         # Return original image
         return 0, 0, img_h, img_w, img, None, None
