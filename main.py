@@ -508,11 +508,11 @@ def pre_train(model: BYOL,
     """
     byol_augmenter = BYOLAugmenter(resize_output_height=model.input_height,
                                    resize_output_width=model.input_width)
-    byol_augmenter.setup_multi_view(view_1_params=augmentation_params["view_1"],
-                                    view_2_params=augmentation_params["view_2"])
+    byol_augmenter.setup_custom_view(**augmentation_params["view_1"])
+
     dataset, _, _ = get_dataset(type=dataset_type,
                                 path=dataset_path,
-                                train_transform=byol_augmenter.self_supervised_pre_train_transform,
+                                train_transform=byol_augmenter.apply_custom_view,
                                 percent_train_to_use_as_val=0.0,
                                 percent_data_to_use=percent_data_to_use,
                                 seed = seed)
