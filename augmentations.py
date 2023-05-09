@@ -502,7 +502,7 @@ class BYOLRandomAffine(BYOLRandomApplyAug):
                                                                    translate = translate,
                                                                    scale = scale,
                                                                    shear = shear,
-                                                                   interpolation = InterpolationMode.BICUBIC))
+                                                                   interpolation = InterpolationMode.BILINEAR))
 
 
 class BYOLRandomPerspective(BYOLRandomApplyAug):
