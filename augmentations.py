@@ -228,6 +228,7 @@ class BYOLAugmenter:
                                                         **cut_paste))
         self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteScar,
                                                         **cut_paste_scar))
+        print(cut_paste_affine)
         self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteAffine,
                                                         **cut_paste_affine))
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomPerspective,
@@ -669,7 +670,7 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
     def forward(self,
                 img):
         if torch.rand(1) < self.p:
-
+            # print("CUT PASTE AFFINE")
             # cast self.value to script acceptable type
             if isinstance(self.value,
                           (int, float)):
@@ -707,8 +708,9 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
                                                                         interpolation = InterpolationMode.BILINEAR))
 
             img = img.clone()
-
-            img[..., center_i - math.floor(h_2 / 2): center_i + math.ceil(h_2 / 2), center_j - math.floor(w_2 / 2): center_j + math.ceil(w_2 / 2)][aug_img != v] = aug_img[aug_img != v]
+            i = center_i - math.ceil(h_2 / 2)
+            j = center_j - math.ceil(w_2 / 2)
+            img[..., i: i + h_2, j:j + w_2][aug_img != v] = aug_img[aug_img != v]
         return img
 
     @staticmethod
@@ -759,9 +761,9 @@ class BYOLCutPasteAffine(torchvision.transforms.RandomErasing):
             else:
                 v = torch.tensor(value)[:, None, None]
 
-            half_max_width = int(max(w_2,
+            half_max_width = math.ceil(max(w_2,
                                      w) / 2)
-            half_max_height = int(max(h_2,
+            half_max_height = math.ceil(max(h_2,
                                       h) / 2)
             center_i = torch.randint(half_max_height,
                                      img_h - half_max_height + 1,
