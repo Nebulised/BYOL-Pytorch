@@ -92,7 +92,7 @@ def main():
         import numpy as np
         np.random.seed(args.seed)
         torch.backends.cudnn.benchmark = False
-        torch.use_deterministic_algorithms(True)
+        #torch.use_deterministic_algorithms(True)
         torch.backends.cudnn.deterministic = True
 
     run_type = args.run_type
