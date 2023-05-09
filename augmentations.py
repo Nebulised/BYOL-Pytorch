@@ -15,6 +15,12 @@ from torchvision.transforms.functional import adjust_hue, adjust_brightness, adj
 from torchvision.transforms import RandomApply
 
 
+class ScaleTensor:
+
+    def __call__(self, image):
+        return image.to(dtype=torch.get_default_dtype()).div(255)
+
+
 class BYOLRandomApplyAug:
     """Abstract class used to make any augmentation be able to be randomly applied
 
@@ -206,6 +212,7 @@ class BYOLAugmenter:
         self.custom_aug_list = []
         resize_crop["output_height"] = self.resize_output_height
         resize_crop["output_width"] = self.resize_output_width
+        self.custom_aug_list.append(torchvision.transforms.PILToTensor())
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomResize,
                                                         **resize_crop))
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomAffine,
@@ -233,8 +240,8 @@ class BYOLAugmenter:
                                                         **gaussian_blur))
         self.custom_aug_list.append(CustomAugApplicator(BYOLSolarize,
                                                         **solarize))
-        self.custom_aug_list.append(ToTensor())
-        # self.custom_aug_list.append(Normalize(**normalise))
+        self.custom_aug_list.append(ScaleTensor)
+        self.custom_aug_list.append(Normalize(**normalise))
 
     def apply_custom_view(self,
                           image):
