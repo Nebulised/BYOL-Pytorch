@@ -240,7 +240,7 @@ class BYOLAugmenter:
                                                         **gaussian_blur))
         self.custom_aug_list.append(CustomAugApplicator(BYOLSolarize,
                                                         **solarize))
-        self.custom_aug_list.append(ScaleTensor)
+        self.custom_aug_list.append(ScaleTensor())
         self.custom_aug_list.append(Normalize(**normalise))
 
     def apply_custom_view(self,
