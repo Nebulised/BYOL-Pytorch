@@ -517,7 +517,7 @@ class BYOLRandomPerspective(BYOLRandomApplyAug):
         """
         super().__init__(apply_probability,
                          aug = torchvision.transforms.RandomPerspective(distortion_scale = distortion_scale,
-                                                                        interpolation = InterpolationMode.BICUBIC))
+                                                                        interpolation = InterpolationMode.BILINEAR))
 
 
 class BYOLCutPaste(torchvision.transforms.RandomErasing):
