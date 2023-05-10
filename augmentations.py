@@ -212,7 +212,6 @@ class BYOLAugmenter:
         self.custom_aug_list = []
         resize_crop["output_height"] = self.resize_output_height
         resize_crop["output_width"] = self.resize_output_width
-        self.custom_aug_list.append(torchvision.transforms.PILToTensor())
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomResize,
                                                         **resize_crop))
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomAffine,
@@ -228,7 +227,7 @@ class BYOLAugmenter:
                                                         **cut_paste))
         self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteScar,
                                                         **cut_paste_scar))
-        print(cut_paste_affine)
+
         self.custom_aug_list.append(CustomAugApplicator(BYOLCutPasteAffine,
                                                         **cut_paste_affine))
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomPerspective,
@@ -246,8 +245,8 @@ class BYOLAugmenter:
 
     def apply_custom_view(self,
                           image):
-
-        image_view_1, image_view_2 = image, image
+        image = torchvision.transforms.functional.pil_to_tensor(image)
+        image_view_1, image_view_2 = image.clone(), image.clone()
         for each_transform in self.custom_aug_list:
             if isinstance(each_transform, CustomAugApplicator):
                 image_view_1, image_view_2 = each_transform(image_view_1,
