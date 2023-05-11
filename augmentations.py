@@ -15,6 +15,11 @@ from torchvision.transforms.functional import adjust_hue, adjust_brightness, adj
 from torchvision.transforms import RandomApply
 
 
+class GreyscaleToRGB():
+
+    def __call__(self, image):
+        assert image.size()[0] == 1
+        return image.repeat(3,1,1)
 class ScaleTensor:
 
     def __call__(self, image):
@@ -43,6 +48,7 @@ class BYOLRandomApplyAug:
         """
         self.aug = torchvision.transforms.RandomApply(p = apply_probability,
                                                       transforms = [aug])
+
 
     def __call__(self,
                  image: torch.Tensor):
@@ -166,15 +172,18 @@ class BYOLAugmenter:
             torchvision transform composition consisting of
             BYOLRandomResize, BYOLHorizontalFlip, ToTensor and Normalize
         """
-        return torchvision.transforms.Compose([BYOLRandomResize(output_height = self.resize_output_height,
+        return torchvision.transforms.Compose([torchvision.transforms.PILToTensor(),
+                                               torchvision.transforms.Grayscale(num_output_channels=1),
+                                               BYOLRandomResize(output_height = self.resize_output_height,
                                                                 output_width = self.resize_output_width,
                                                                 **resize_crop),
                                                torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                                      self.resize_output_width),
                                                                              interpolation = InterpolationMode.BICUBIC),
                                                BYOLHorizontalFlip(**random_flip),
-                                               ToTensor(),
-                                               Normalize(**normalise)])
+                                               ScaleTensor(),
+                                               Normalize(**normalise),
+                                               GreyscaleToRGB()])
 
     def get_test_augmentations(self,
                                normalise: dict):
@@ -189,11 +198,14 @@ class BYOLAugmenter:
             Resize, ToTensor and Normalize
 
         """
-        return torchvision.transforms.Compose([torchvision.transforms.Resize(size = (self.resize_output_height,
+        return torchvision.transforms.Compose([torchvision.transforms.PILToTensor(),
+                                               torchvision.transforms.Grayscale(num_output_channels=1),
+                                               torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                                      self.resize_output_width),
                                                                              interpolation = InterpolationMode.BICUBIC),
-                                               ToTensor(),
-                                               Normalize(**normalise)])
+                                               ScaleTensor(),
+                                               Normalize(**normalise),
+                                               GreyscaleToRGB()])
 
     def setup_custom_view(self,
                           resize_crop: dict,
@@ -246,6 +258,7 @@ class BYOLAugmenter:
     def apply_custom_view(self,
                           image):
         image = torchvision.transforms.functional.pil_to_tensor(image)
+        image = torchvision.transforms.functional.rgb_to_grayscale(image, num_output_channels=1)
         image_view_1, image_view_2 = image.clone(), image.clone()
         for each_transform in self.custom_aug_list:
             if isinstance(each_transform, CustomAugApplicator):
