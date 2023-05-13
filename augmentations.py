@@ -114,6 +114,7 @@ class BYOLAugmenter:
         self.view_1 = None
         self.view_2 = None
         self.custom_aug_list = None
+        self._input_is_grayscale = None
 
     def self_supervised_pre_train_transform(self,
                                             image: torch.Tensor):
@@ -172,18 +173,26 @@ class BYOLAugmenter:
             torchvision transform composition consisting of
             BYOLRandomResize, BYOLHorizontalFlip, ToTensor and Normalize
         """
-        return torchvision.transforms.Compose([torchvision.transforms.PILToTensor(),
-                                               torchvision.transforms.Grayscale(num_output_channels=1),
-                                               BYOLRandomResize(output_height = self.resize_output_height,
-                                                                output_width = self.resize_output_width,
-                                                                **resize_crop),
-                                               torchvision.transforms.Resize(size = (self.resize_output_height,
-                                                                                     self.resize_output_width),
-                                                                             interpolation = InterpolationMode.BICUBIC),
-                                               BYOLHorizontalFlip(**random_flip),
-                                               ScaleTensor(),
-                                               Normalize(**normalise),
-                                               GreyscaleToRGB()])
+        if len(normalise["mean"]) == 3:
+            is_grayscale = False
+        else:
+            is_grayscale = True
+
+        fine_tune_aug_list = [torchvision.transforms.PILToTensor()]
+        if is_grayscale:
+            fine_tune_aug_list.append(torchvision.transforms.Grayscale(num_output_channels=1))
+        fine_tune_aug_list += [BYOLRandomResize(output_height = self.resize_output_height,
+                                                output_width = self.resize_output_width,
+                                                **resize_crop),
+                               torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                                     self.resize_output_width),
+                                                             interpolation = InterpolationMode.BICUBIC),
+                               BYOLHorizontalFlip(**random_flip),
+                               ScaleTensor(),
+                               Normalize(**normalise)]
+        if is_grayscale:
+            fine_tune_aug_list.append(GreyscaleToRGB())
+        return torchvision.transforms.Compose(fine_tune_aug_list)
 
     def get_test_augmentations(self,
                                normalise: dict):
@@ -254,12 +263,19 @@ class BYOLAugmenter:
                                                         **solarize))
         self.custom_aug_list.append(ScaleTensor())
         self.custom_aug_list.append(Normalize(**normalise))
-        self.custom_aug_list.append(GreyscaleToRGB())
+        if len(normalise["mean"]) == 1:
+            self._input_is_grayscale = False
+            self.custom_aug_list.append(GreyscaleToRGB())
+        else:
+            self._input_is_grayscale = True
 
     def apply_custom_view(self,
                           image):
         image = torchvision.transforms.functional.pil_to_tensor(image)
-        image = torchvision.transforms.functional.rgb_to_grayscale(image, num_output_channels=1)
+        if self._input_is_grayscale is None:
+            raise Exception("setup_custom_view must be called beforehand")
+        if self._input_is_grayscale:
+            image = torchvision.transforms.functional.rgb_to_grayscale(image, num_output_channels=1)
         image_view_1, image_view_2 = image.clone(), image.clone()
         for each_transform in self.custom_aug_list:
             if isinstance(each_transform, CustomAugApplicator):
