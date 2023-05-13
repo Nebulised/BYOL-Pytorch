@@ -254,6 +254,7 @@ class BYOLAugmenter:
                                                         **solarize))
         self.custom_aug_list.append(ScaleTensor())
         self.custom_aug_list.append(Normalize(**normalise))
+        self.custom_aug_list.append(GreyscaleToRGB())
 
     def apply_custom_view(self,
                           image):
