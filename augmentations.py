@@ -207,14 +207,22 @@ class BYOLAugmenter:
             Resize, ToTensor and Normalize
 
         """
-        return torchvision.transforms.Compose([torchvision.transforms.PILToTensor(),
-                                               torchvision.transforms.Grayscale(num_output_channels=1),
-                                               torchvision.transforms.Resize(size = (self.resize_output_height,
-                                                                                     self.resize_output_width),
-                                                                             interpolation = InterpolationMode.BICUBIC),
-                                               ScaleTensor(),
-                                               Normalize(**normalise),
-                                               GreyscaleToRGB()])
+        if len(normalise["mean"]) == 3:
+            is_grayscale = False
+        else:
+            is_grayscale = True
+
+        test_aug_list = [torchvision.transforms.PILToTensor()]
+        if is_grayscale:
+            test_aug_list.append(torchvision.transforms.Grayscale(num_output_channels=1))
+        test_aug_list += [torchvision.transforms.Resize(size = (self.resize_output_height,
+                                                                self.resize_output_width),
+                                                        interpolation = InterpolationMode.BICUBIC),
+                               ScaleTensor(),
+                               Normalize(**normalise)]
+        if is_grayscale:
+            test_aug_list.append(GreyscaleToRGB())
+        return torchvision.transforms.Compose(test_aug_list)
 
     def setup_custom_view(self,
                           resize_crop: dict,
