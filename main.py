@@ -619,7 +619,7 @@ def test(model: BYOL,
             correct += (predicted == labels).sum().item()
     acc = correct / total
     if isinstance(test_data_loader.dataset, torch.utils.data.Subset):
-        if isinstance(test_data_loader.dataset.dataset, torch.utils.Subset):
+        if isinstance(test_data_loader.dataset.dataset, torch.utils.data.Subset):
             dataset_classes = test_data_loader.dataset.dataset.dataset.classes
         else:
             dataset_classes = test_data_loader.dataset.dataset.classes
