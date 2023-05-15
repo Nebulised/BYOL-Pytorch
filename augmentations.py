@@ -272,10 +272,10 @@ class BYOLAugmenter:
         self.custom_aug_list.append(ScaleTensor())
         self.custom_aug_list.append(Normalize(**normalise))
         if len(normalise["mean"]) == 1:
-            self._input_is_grayscale = False
+            self._input_is_grayscale = True
             self.custom_aug_list.append(GreyscaleToRGB())
         else:
-            self._input_is_grayscale = True
+            self._input_is_grayscale = False
 
     def apply_custom_view(self,
                           image):
