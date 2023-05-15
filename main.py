@@ -618,13 +618,13 @@ def test(model: BYOL,
             all_predictions += predicted.cpu().tolist()
             correct += (predicted == labels).sum().item()
     acc = correct / total
-    if isinstance(test_data_loader, torch.utils.data.Subset):
-        if isinstance(test_data_loader.dataset, torch.utils.Subset):
-            dataset_classes = test_data_loader.dataset.dataset.classes
+    if isinstance(test_data_loader.dataset, torch.utils.data.Subset):
+        if isinstance(test_data_loader.dataset.dataset, torch.utils.Subset):
+            dataset_classes = test_data_loader.dataset.dataset.dataset.classes
         else:
-            dataset_classes = test_data_loader.dataset.classes
+            dataset_classes = test_data_loader.dataset.dataset.classes
     else:
-        dataset_classes = test_data_loader.classes
+        dataset_classes = test_data_loader.dataset.classes
 
     all_labels = [dataset_classes[label] for label in all_labels]
     all_predictions = [dataset_classes[prediction] for prediction in all_predictions]
