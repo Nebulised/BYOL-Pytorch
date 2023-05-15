@@ -75,6 +75,11 @@ def get_args():
                         type = int,
                         help = "See for randomness")
 
+    parser.add_argument("--percent-shuffle-labels",
+                        default = 0.0,
+                        type = float)
+
+    parsed_args = parser.parse_args()
     parsed_args = parser.parse_args()
     # Model path must be specified when fine-tuning or testing
     if parsed_args.run_type != "train":
@@ -276,6 +281,7 @@ def fine_tune(model: BYOL,
               percent_train_to_use_as_val: float,
               percent_data_to_use: float,
               validate_every: int,
+              percent_shuffle_labels,
               start_epoch: int = 0,
               mlflow_enabled: bool = False,
               scheduler=None,
@@ -339,7 +345,8 @@ def fine_tune(model: BYOL,
                                                            test_transform=byol_augmenter.get_test_augmentations(**augmentation_params["test"]),
                                                            percent_data_to_use=percent_data_to_use,
                                                            percent_train_to_use_as_val=percent_train_to_use_as_val,
-                                                           seed = seed)
+                                                           seed = seed,
+                                                           percent_shuffle_labels = percent_shuffle_labels)
 
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                     batch_size=batch_size,

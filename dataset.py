@@ -5,6 +5,7 @@ import torch
 import torchvision
 import torchvision.datasets
 
+
 DATASET_CHOICES = ["custom",
                    "emnist_by-class",
                    "emnist_by-merge",
@@ -22,6 +23,7 @@ def get_dataset(type : str,
                 train_transform=None,
                 test_transform=None,
                 seed = None,
+                percent_shuffle_labels : float = 0.0,
                 **kwargs):
     """Method for getting train/val/test datasets
 
@@ -99,7 +101,22 @@ def get_dataset(type : str,
                                               val_split_indexes)
         train_dataset = new_train_dataset
 
+    if percent_shuffle_labels > 0.0:
+        print(f"Randomly shuffling target labels for training dataset with probability : {percent_shuffle_labels}")
+        if isinstance(train_dataset, torch.utils.data.Subset):
+            if isinstance(train_dataset.dataset, torch.utils.data.Subset):
+                for index_2 in [train_dataset.dataset.indices[index] for index in train_dataset.indices]:
+                        if torch.rand(1) < percent_shuffle_labels:
+                            train_dataset.dataset.dataset.targets[index_2] = torch.randint(low=0, high=len(train_dataset.dataset.dataset.classes), size=(1,))
+            else:
+                for each_index in train_dataset.indices:
+                    if torch.rand(1) < percent_shuffle_labels:
+                        train_dataset.dataset.targets[each_index] = torch.randint(low=0, high=len(train_dataset.dataset.classes), size=(1,))
 
+        else:
+            for each_target_index in range(len(train_dataset.targets)):
+                if torch.rand(1) < percent_shuffle_labels:
+                    train_dataset.targets[each_target_index] = torch.randint(low=0, high=len(train_dataset.classes), size=(1,))
     # if percent_data_to_use < 1.0 and val_dataset is not None:
     #     val_dataset = torch.utils.data.Subset(val_dataset,
     #                                           sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
@@ -112,7 +129,10 @@ def get_dataset(type : str,
         if each_dataset is None:
             continue
         if isinstance(each_dataset, torch.utils.data.Subset):
-            targets = [each_dataset.dataset.dataset.targets[index] for index in each_dataset.dataset.indices] if isinstance(each_dataset.dataset, torch.utils.data.Subset) else [each_dataset.dataset.targets[index] for index in each_dataset.indices]
+            if isinstance(each_dataset.dataset,torch.utils.data.Subset):
+                targets = [each_dataset.dataset.dataset.targets[index_2] for index_2 in [each_dataset.dataset.indices[index] for index in each_dataset.indices]]
+            else:
+                targets = [each_dataset.dataset.targets[index] for index in each_dataset.indices]
         else:
             targets = each_dataset.targets
         classes, number_each_class = torch.unique(torch.LongTensor(targets), return_counts=True)
