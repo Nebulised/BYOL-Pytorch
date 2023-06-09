@@ -518,11 +518,12 @@ def pre_train(model: BYOL,
     byol_augmenter.setup_custom_view(**augmentation_params["view_1"])
 
     dataset, val_dataset, _ = get_dataset(type=dataset_type,
-                                path=dataset_path,
-                                train_transform=byol_augmenter.apply_custom_view,
-                                percent_train_to_use_as_val=0.0,
-                                percent_data_to_use=percent_data_to_use,
-                                seed = seed)
+                                          path=dataset_path,
+                                          train_transform=byol_augmenter.apply_custom_view,
+                                          test_transform=byol_augmenter.apply_custom_view, # By default the val dataset will use the test transform so we set the test transform to the train transform
+                                          percent_train_to_use_as_val=0.0,
+                                          percent_data_to_use=percent_data_to_use,
+                                          seed = seed)
     if val_dataset is not None:
         print("validation dataset has been specified. Combining training and validation dataset into one for pre-training")
         dataset = torch.utils.data.ConcatDataset([dataset, val_dataset])
