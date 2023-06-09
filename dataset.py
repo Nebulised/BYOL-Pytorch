@@ -122,8 +122,16 @@ def get_dataset(type : str,
                                                                                          train_size=percent_data_to_use,
                                                                                          stratify=train_dataset.targets,
                                                                                          random_state=seed)[0])
+        if val_dataset is not None:
+            val_dataset = torch.utils.data.Subset(val_dataset,
+                                                  sklearn.model_selection.train_test_split(torch.arange(len(val_dataset)),
+                                                                                             train_size=percent_data_to_use,
+                                                                                             stratify=val_dataset.targets,
+                                                                                             random_state=seed)[0])
 
     if percent_train_to_use_as_val > 0.0:
+        if val_dataset is not None:
+            raise ValueError("Percent train to use as val has been set but validation dataset has been specified")
         train_split_indexes, val_split_indexes = sklearn.model_selection.train_test_split(torch.arange(len(train_dataset)),
                                                                                           train_size=1-percent_train_to_use_as_val,
                                                                                           test_size=percent_train_to_use_as_val,
