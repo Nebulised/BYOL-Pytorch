@@ -97,9 +97,13 @@ def get_dataset(type : str,
         # For some reason some pytorch uses targets to mean labels. Some use labels
         # Just manually assign a target variable, this may cause issues with the randomised labels
         #TODO: Fix this to work with randomised labels
+        #TODO: Fix this to work with the actual flowers 102 labels
         train_dataset.targets = train_dataset._labels
+        train_dataset.classes = torch.unique(train_dataset._labels)
         val_dataset.targets = val_dataset._labels
+        val_dataset.classes = torch.unique(val_dataset._labels)
         test_dataset.targets = test_dataset._labels
+        test_dataset.classes = torch.unique(test_dataset._labels)
 
 
 
