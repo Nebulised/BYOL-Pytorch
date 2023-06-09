@@ -99,11 +99,11 @@ def get_dataset(type : str,
         #TODO: Fix this to work with randomised labels
         #TODO: Fix this to work with the actual flowers 102 labels
         train_dataset.targets = train_dataset._labels
-        train_dataset.classes = torch.unique(train_dataset._labels)
+        train_dataset.classes = torch.unique(torch.LongTensor(train_dataset._labels))
         val_dataset.targets = val_dataset._labels
-        val_dataset.classes = torch.unique(val_dataset._labels)
+        val_dataset.classes = torch.unique(torch.LongTensor(val_dataset._labels))
         test_dataset.targets = test_dataset._labels
-        test_dataset.classes = torch.unique(test_dataset._labels)
+        test_dataset.classes = torch.unique(torch.LongTensor(test_dataset._labels))
 
 
 
