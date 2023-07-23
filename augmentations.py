@@ -70,7 +70,7 @@ class CustomAugApplicator:
                  augmentation,
                  apply_both_if_applied: bool,
                  apply_probability :float,
-                 duplicate_aug: bool,
+                 duplicate_aug: bool = False,
                  **params):
         self.apply_both_if_applied = apply_both_if_applied
         self.duplicate_augmentation = duplicate_aug
