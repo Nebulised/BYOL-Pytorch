@@ -70,10 +70,13 @@ class CustomAugApplicator:
                  augmentation,
                  apply_both_if_applied: bool,
                  apply_probability :float,
+                 duplicate_aug: bool,
                  **params):
         self.apply_both_if_applied = apply_both_if_applied
+        self.duplicate_augmentation = duplicate_aug
         if self.apply_both_if_applied:
             self.apply_probability = apply_probability
+
             self.aug = augmentation(apply_probability = 1.0,
                                     **params)
         else:
@@ -85,7 +88,11 @@ class CustomAugApplicator:
                  image_view_2):
         if self.apply_both_if_applied:
             if torch.rand(1) < self.apply_probability:
-                return self.aug(image_view_1), self.aug(image_view_2)
+                if self.duplicate_augmentation:
+                    stacked_images = torch.stack(image_view_1.unsqueeze(0), image_view_2.unsqueeze(0))
+                    return self.aug(stacked_images)
+                else:
+                    return self.aug(image_view_1), self.aug(image_view_2)
             else:
                 return image_view_1, image_view_2
         else:
