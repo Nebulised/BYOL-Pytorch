@@ -250,11 +250,11 @@ class BYOLAugmenter:
         resize_crop["output_width"] = self.resize_output_width
         self.custom_aug_list.append(CustomAugApplicator(BYOLRandomResize,
                                                         **resize_crop))
-        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomAffine,
-                                                        **random_affine))
         self.custom_aug_list.append(torchvision.transforms.Resize(size = (self.resize_output_height,
                                                                           self.resize_output_width),
                                                                   interpolation = InterpolationMode.BICUBIC))
+        self.custom_aug_list.append(CustomAugApplicator(BYOLRandomAffine,
+                                                        **random_affine))
         self.custom_aug_list.append(CustomAugApplicator(BYOLHorizontalFlip,
                                                         **random_flip_horizontal))
         self.custom_aug_list.append(CustomAugApplicator(BYOLVerticalFlip,
@@ -281,8 +281,10 @@ class BYOLAugmenter:
         if len(normalise["mean"]) == 1:
             self._input_is_grayscale = True
             self.custom_aug_list.append(GreyscaleToRGB())
+            print("Input images are grayscale. Adding Greyscale back to RGB to augmentations")
         else:
             self._input_is_grayscale = False
+            print("Input images are RGB")
 
     def apply_custom_view(self,
                           image):
