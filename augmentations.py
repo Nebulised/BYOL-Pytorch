@@ -91,7 +91,7 @@ class CustomAugApplicator:
         if self.apply_both_if_applied:
             if torch.rand(1) < self.apply_probability:
                 if self.duplicate_augmentation:
-                    stacked_images = torch.stack(image_view_1.unsqueeze(0), image_view_2.unsqueeze(0))
+                    stacked_images = torch.stack(tensors=(image_view_1.unsqueeze(0), image_view_2.unsqueeze(0)))
                     return self.aug(stacked_images)
                 else:
                     return self.aug(image_view_1), self.aug(image_view_2)
