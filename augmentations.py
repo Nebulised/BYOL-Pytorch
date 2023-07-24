@@ -74,6 +74,8 @@ class CustomAugApplicator:
                  **params):
         self.apply_both_if_applied = apply_both_if_applied
         self.duplicate_augmentation = duplicate_aug
+        if self.duplicate_augmentation and not self.apply_both_if_applied:
+            raise ValueError("Duplicate augmentation requires apply both if applied to be enabled as well")
         if self.apply_both_if_applied:
             self.apply_probability = apply_probability
 
